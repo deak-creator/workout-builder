@@ -634,3 +634,93 @@ html, body { background: radial-gradient(ellipse at top, #1a1526 0%, #0e0c14 60%
 .week-tab.active, .date-chip.selected {
   box-shadow: 0 4px 10px -4px rgba(124,92,224,0.5);
 }
+
+/* ---------- nutrition goal calculator ---------- */
+.totals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.goal-type-badge {
+  background: linear-gradient(135deg, #8b6ef0, #6c48d6);
+  color: #f8f6fd;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.macro-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.macro-bar-row { display: flex; flex-direction: column; gap: 4px; }
+.macro-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #a79bc4;
+}
+.macro-bar-track {
+  background: #16131e;
+  border: 1px solid #262033;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+.macro-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.macro-bar-fill.protein { background: linear-gradient(90deg, #5bc0a8, #7fe0c4); }
+.macro-bar-fill.carbs { background: linear-gradient(90deg, #e0a85b, #f0c88d); }
+.macro-bar-fill.fat { background: linear-gradient(90deg, #e07a9e, #f0a8c0); }
+
+.goal-modal-card-wide {
+  max-width: 380px;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+.goal-mode-toggle { margin-bottom: 16px; }
+.goal-field-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a79bc4;
+  margin: 14px 0 8px;
+  font-weight: 600;
+}
+.goal-input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.goal-input-grid label, .goal-manual-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #a79bc4;
+}
+.goal-input-grid input, .goal-manual-label input {
+  background: #16131e;
+  border: 1px solid #2d2640;
+  color: #e4e1ec;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 15px;
+  margin-top: 2px;
+}
+.goal-manual-label { margin-bottom: 12px; font-size: 13px; }
+.goal-preview {
+  margin-top: 16px;
+  padding: 12px;
+  background: #16131e;
+  border: 1px solid #2d2640;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #c9c2da;
+  line-height: 1.6;
+}
+.goal-preview strong { color: #b9a4f2; }
