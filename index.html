@@ -27,38 +27,51 @@
       <p class="hero-sub">What are we doing today?</p>
     </section>
 
-    <section class="card stats-card" aria-label="Today's summary">
-      <h2>Today</h2>
-      <div class="stats-row">
-        <div class="stat">
-          <div class="stat-value" id="stat-calories">0</div>
-          <div class="stat-label">kcal logged</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="stat-workouts">0</div>
-          <div class="stat-label">workouts saved</div>
-        </div>
-      </div>
-    </section>
+    <button type="button" class="dash-card" data-goto="setup-screen" data-presetmode="quick">
+      <span class="dash-card-icon" aria-hidden="true">⚡</span>
+      <span class="dash-card-text">
+        <span class="dash-card-title">Quick Workout</span>
+        <span class="dash-card-sub">Generate a single session in seconds</span>
+      </span>
+      <span class="dash-card-arrow" aria-hidden="true">›</span>
+    </button>
 
-    <nav class="action-grid" aria-label="Quick actions">
-      <button type="button" class="action-tile" data-goto="setup-screen" data-presetmode="quick">
-        <span class="tile-icon" aria-hidden="true">⚡</span>
-        <span class="tile-label">Quick Workout</span>
-      </button>
-      <button type="button" class="action-tile" data-goto="setup-screen" data-presetmode="plan">
-        <span class="tile-icon" aria-hidden="true">📅</span>
-        <span class="tile-label">Build a Plan</span>
-      </button>
-      <button type="button" class="action-tile" data-goto="nutrition-screen" data-openscan="1">
-        <span class="tile-icon" aria-hidden="true">📷</span>
-        <span class="tile-label">Scan Food</span>
-      </button>
-      <button type="button" class="action-tile" data-goto="saved-screen">
-        <span class="tile-icon" aria-hidden="true">⭐</span>
-        <span class="tile-label">Saved</span>
-      </button>
-    </nav>
+    <button type="button" class="dash-card" data-goto="setup-screen" data-presetmode="plan">
+      <span class="dash-card-icon" aria-hidden="true">📅</span>
+      <span class="dash-card-text">
+        <span class="dash-card-title">Build a Plan</span>
+        <span class="dash-card-sub">Multi-week programs with smart splits</span>
+      </span>
+      <span class="dash-card-arrow" aria-hidden="true">›</span>
+    </button>
+
+    <button type="button" class="dash-card dash-card-food" data-goto="nutrition-screen">
+      <span class="dash-card-row">
+        <span class="dash-card-text">
+          <span class="dash-card-title">Food Diary</span>
+          <span class="dash-card-sub" id="home-cal-sub">0 / 2000 kcal today</span>
+        </span>
+        <span class="dash-card-arrow" aria-hidden="true">›</span>
+      </span>
+      <span class="home-ring-row">
+        <span class="ring-mini" id="home-ring-protein" style="--pct:0" data-color="protein"><span id="home-ring-protein-text">0g</span></span>
+        <span class="ring-mini" id="home-ring-carbs" style="--pct:0" data-color="carbs"><span id="home-ring-carbs-text">0g</span></span>
+        <span class="ring-mini" id="home-ring-fat" style="--pct:0" data-color="fat"><span id="home-ring-fat-text">0g</span></span>
+      </span>
+    </button>
+
+    <button type="button" class="action-tile-mini" data-goto="nutrition-screen" data-openscan="1">
+      <span aria-hidden="true">📷</span> Scan Food
+    </button>
+
+    <button type="button" class="dash-card" data-goto="saved-screen">
+      <span class="dash-card-icon" aria-hidden="true">⭐</span>
+      <span class="dash-card-text">
+        <span class="dash-card-title">Saved</span>
+        <span class="dash-card-sub" id="home-saved-sub">0 workouts saved</span>
+      </span>
+      <span class="dash-card-arrow" aria-hidden="true">›</span>
+    </button>
   </main>
 
   <!-- ============ BUILD / SETUP ============ -->
@@ -200,18 +213,18 @@
         </div>
       </div>
 
-      <div class="macro-bars">
-        <div class="macro-bar-row">
-          <div class="macro-bar-label"><span>Protein</span><span id="n-protein-text">0 / 150g</span></div>
-          <div class="macro-bar-track"><div id="protein-fill" class="macro-bar-fill protein"></div></div>
+      <div class="macro-rings">
+        <div class="macro-ring" id="ring-protein" data-color="protein" style="--pct:0">
+          <span class="ring-label">Protein</span>
+          <span class="ring-value" id="n-protein-text">0/150g</span>
         </div>
-        <div class="macro-bar-row">
-          <div class="macro-bar-label"><span>Carbs</span><span id="n-carbs-text">0 / 200g</span></div>
-          <div class="macro-bar-track"><div id="carbs-fill" class="macro-bar-fill carbs"></div></div>
+        <div class="macro-ring" id="ring-carbs" data-color="carbs" style="--pct:0">
+          <span class="ring-label">Carbs</span>
+          <span class="ring-value" id="n-carbs-text">0/200g</span>
         </div>
-        <div class="macro-bar-row">
-          <div class="macro-bar-label"><span>Fat</span><span id="n-fat-text">0 / 65g</span></div>
-          <div class="macro-bar-track"><div id="fat-fill" class="macro-bar-fill fat"></div></div>
+        <div class="macro-ring" id="ring-fat" data-color="fat" style="--pct:0">
+          <span class="ring-label">Fat</span>
+          <span class="ring-value" id="n-fat-text">0/65g</span>
         </div>
       </div>
     </section>
