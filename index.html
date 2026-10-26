@@ -186,7 +186,10 @@
     <div id="date-strip" class="date-strip" role="tablist" aria-label="Select day"></div>
 
     <section class="card stats-card" aria-label="Day's food log totals">
-      <h2 id="day-totals-heading">Totals</h2>
+      <div class="totals-header">
+        <h2 id="day-totals-heading">Totals</h2>
+        <span class="goal-type-badge" id="goal-type-badge">Maintain</span>
+      </div>
 
       <div class="cal-progress-wrap">
         <div class="cal-progress-track">
@@ -197,10 +200,19 @@
         </div>
       </div>
 
-      <div class="stats-row three">
-        <div class="stat"><div class="stat-value" id="n-protein">0</div><div class="stat-label">protein g</div></div>
-        <div class="stat"><div class="stat-value" id="n-carbs">0</div><div class="stat-label">carbs g</div></div>
-        <div class="stat"><div class="stat-value" id="n-fat">0</div><div class="stat-label">fat g</div></div>
+      <div class="macro-bars">
+        <div class="macro-bar-row">
+          <div class="macro-bar-label"><span>Protein</span><span id="n-protein-text">0 / 150g</span></div>
+          <div class="macro-bar-track"><div id="protein-fill" class="macro-bar-fill protein"></div></div>
+        </div>
+        <div class="macro-bar-row">
+          <div class="macro-bar-label"><span>Carbs</span><span id="n-carbs-text">0 / 200g</span></div>
+          <div class="macro-bar-track"><div id="carbs-fill" class="macro-bar-fill carbs"></div></div>
+        </div>
+        <div class="macro-bar-row">
+          <div class="macro-bar-label"><span>Fat</span><span id="n-fat-text">0 / 65g</span></div>
+          <div class="macro-bar-track"><div id="fat-fill" class="macro-bar-fill fat"></div></div>
+        </div>
       </div>
     </section>
 
@@ -217,11 +229,55 @@
     <div id="food-log-list"></div>
   </main>
 
-  <!-- calorie goal modal -->
-  <div id="goal-modal" class="goal-modal" hidden role="dialog" aria-modal="true" aria-label="Set daily calorie goal">
-    <div class="goal-modal-card">
-      <h2>Daily Calorie Goal</h2>
-      <input type="number" id="goal-input" inputmode="numeric" placeholder="2000">
+  <!-- nutrition goal modal -->
+  <div id="goal-modal" class="goal-modal" hidden role="dialog" aria-modal="true" aria-label="Set nutrition goals">
+    <div class="goal-modal-card goal-modal-card-wide">
+      <h2>Nutrition Goals</h2>
+
+      <div class="mode-toggle goal-mode-toggle" data-field="goalmode" role="tablist" aria-label="Goal setup mode">
+        <button type="button" class="mode-btn selected" data-value="calculate" role="tab" aria-selected="true">Calculate for me</button>
+        <button type="button" class="mode-btn" data-value="manual" role="tab" aria-selected="false">Enter manually</button>
+      </div>
+
+      <div id="goal-calc-fields">
+        <h3 class="goal-field-label">Goal</h3>
+        <div class="chip-group" data-field="nutriGoal">
+          <button type="button" class="chip" data-value="lose">Lose Fat</button>
+          <button type="button" class="chip selected" data-value="maintain">Maintain</button>
+          <button type="button" class="chip" data-value="gain">Build Muscle</button>
+        </div>
+
+        <h3 class="goal-field-label">Sex</h3>
+        <div class="chip-group" data-field="sex">
+          <button type="button" class="chip selected" data-value="male">Male</button>
+          <button type="button" class="chip" data-value="female">Female</button>
+        </div>
+
+        <div class="goal-input-grid">
+          <label>Age<input type="number" id="goal-age" inputmode="numeric" placeholder="30"></label>
+          <label>Weight (kg)<input type="number" id="goal-weight" inputmode="decimal" placeholder="75"></label>
+          <label>Height (cm)<input type="number" id="goal-height" inputmode="numeric" placeholder="175"></label>
+        </div>
+
+        <h3 class="goal-field-label">Activity level</h3>
+        <div class="chip-group" data-field="activity">
+          <button type="button" class="chip" data-value="1.2">Sedentary</button>
+          <button type="button" class="chip selected" data-value="1.375">Light</button>
+          <button type="button" class="chip" data-value="1.55">Moderate</button>
+          <button type="button" class="chip" data-value="1.725">Active</button>
+          <button type="button" class="chip" data-value="1.9">Very Active</button>
+        </div>
+
+        <div class="goal-preview" id="goal-preview"></div>
+      </div>
+
+      <div id="goal-manual-fields" hidden>
+        <label class="goal-manual-label">Calories (kcal)<input type="number" id="manual-cal" inputmode="numeric" placeholder="2000"></label>
+        <label class="goal-manual-label">Protein (g)<input type="number" id="manual-protein" inputmode="numeric" placeholder="150"></label>
+        <label class="goal-manual-label">Carbs (g)<input type="number" id="manual-carbs" inputmode="numeric" placeholder="200"></label>
+        <label class="goal-manual-label">Fat (g)<input type="number" id="manual-fat" inputmode="numeric" placeholder="65"></label>
+      </div>
+
       <div class="goal-modal-actions">
         <button type="button" id="goal-cancel-btn" class="primary-btn secondary">Cancel</button>
         <button type="button" id="goal-save-btn" class="primary-btn">Save</button>
