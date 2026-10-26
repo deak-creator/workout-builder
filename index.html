@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Workouts">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="theme-color" content="#121018">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=10">
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 </head>
 <body>
@@ -108,8 +108,8 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2 id="goal-label">Goal</h2>
+      <section class="card quick-only">
+        <h2 id="goal-label">What are you trying to achieve?</h2>
         <div class="chip-group" data-field="goal" role="group" aria-labelledby="goal-label">
           <button type="button" class="chip" data-value="strength">Strength</button>
           <button type="button" class="chip" data-value="cardio">Cardio</button>
@@ -117,6 +117,10 @@
           <button type="button" class="chip" data-value="mobility">Mobility</button>
           <button type="button" class="chip selected" data-value="general">General Fitness</button>
         </div>
+      </section>
+
+      <section class="card plan-only" hidden>
+        <p class="plan-note">Each day in your plan will be a different workout type (strength, cardio, fat loss, mobility) for balanced, varied training.</p>
       </section>
 
       <section class="card">
@@ -136,31 +140,6 @@
           <button type="button" class="chip selected" data-value="beginner">Beginner</button>
           <button type="button" class="chip" data-value="intermediate">Intermediate</button>
           <button type="button" class="chip" data-value="advanced">Advanced</button>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 id="equip-label">Equipment available</h2>
-        <div class="chip-group multi" data-field="equipment" role="group" aria-labelledby="equip-label">
-          <button type="button" class="chip selected" data-value="bodyweight">Bodyweight</button>
-          <button type="button" class="chip" data-value="dumbbells">Dumbbells</button>
-          <button type="button" class="chip" data-value="bands">Bands</button>
-          <button type="button" class="chip" data-value="kettlebell">Kettlebell</button>
-          <button type="button" class="chip" data-value="pullup bar">Pull-up Bar</button>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 id="muscles-label">Target areas (optional)</h2>
-        <div class="chip-group multi" data-field="muscles" role="group" aria-labelledby="muscles-label">
-          <button type="button" class="chip" data-value="chest">Chest</button>
-          <button type="button" class="chip" data-value="back">Back</button>
-          <button type="button" class="chip" data-value="shoulders">Shoulders</button>
-          <button type="button" class="chip" data-value="biceps">Arms</button>
-          <button type="button" class="chip" data-value="core">Core</button>
-          <button type="button" class="chip" data-value="glutes">Glutes</button>
-          <button type="button" class="chip" data-value="quads">Legs</button>
-          <button type="button" class="chip" data-value="full body">Full Body</button>
         </div>
       </section>
 
@@ -323,6 +302,6 @@
   </nav>
 
 </div>
-<script src="app.js"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
