@@ -724,3 +724,248 @@ html, body { background: radial-gradient(ellipse at top, #1a1526 0%, #0e0c14 60%
   line-height: 1.6;
 }
 .goal-preview strong { color: #b9a4f2; }
+
+/* ============================================================
+   HOME DASHBOARD (stacked cards, inspired by coach-app reference)
+   ============================================================ */
+.dash-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  background: linear-gradient(145deg, #1e1a28, #171320);
+  border: 1px solid #262033;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  flex-direction: row;
+}
+.dash-card-food { flex-direction: column; align-items: stretch; gap: 10px; }
+.dash-card-row { display: flex; align-items: center; gap: 14px; width: 100%; }
+.dash-card:active { opacity: 0.85; }
+.dash-card-icon {
+  font-size: 26px;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(124,92,224,0.15);
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+.dash-card-text { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.dash-card-title { font-size: 16px; font-weight: 700; color: #f1edf7; }
+.dash-card-sub { font-size: 13px; color: #978cb3; }
+.dash-card-arrow { font-size: 22px; color: #6b6281; flex-shrink: 0; }
+
+.action-tile-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed #332b47;
+  color: #b9a4f2;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.home-ring-row {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 4px;
+}
+.ring-mini {
+  --pct: 0;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e4e1ec;
+  background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), #2a2437 0);
+  position: relative;
+}
+.ring-mini::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #1b1724;
+}
+.ring-mini span { position: relative; z-index: 1; }
+.ring-mini[data-color="protein"] { --ring-color: #5bc0a8; }
+.ring-mini[data-color="carbs"] { --ring-color: #e0a85b; }
+.ring-mini[data-color="fat"] { --ring-color: #e07a9e; }
+
+/* ============================================================
+   MACRO RINGS — Food Diary (replaces old bar layout)
+   ============================================================ */
+.macro-rings {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0 4px;
+}
+.macro-ring {
+  --pct: 0;
+  --ring-color: #7c5ce0;
+  width: 86px; height: 86px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), #2a2437 0);
+  position: relative;
+}
+.macro-ring::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: #1b1724;
+}
+.macro-ring .ring-label, .macro-ring .ring-value {
+  position: relative;
+  z-index: 1;
+}
+.macro-ring .ring-label { font-size: 12px; color: #a79bc4; font-weight: 600; }
+.macro-ring .ring-value { font-size: 13px; color: #f1edf7; font-weight: 700; }
+.macro-ring[data-color="protein"] { --ring-color: #5bc0a8; }
+.macro-ring[data-color="carbs"] { --ring-color: #e0a85b; }
+.macro-ring[data-color="fat"] { --ring-color: #e07a9e; }
+
+/* ============================================================
+   EXERCISE SET LOGGING PANEL (inline, no page nav away)
+   ============================================================ */
+.exercise-card-wrap { margin-bottom: 10px; }
+.exercise-card-wrap .exercise-card { margin-bottom: 0; cursor: pointer; }
+.exercise-card.logged { border-color: #4a3f6b; }
+.exercise-card.logged .num { background: #2a3f3a; color: #7fe0c4; border-color: #3a5a52; }
+.log-badge { font-size: 12px; color: #7fe0c4; margin-top: 3px; font-weight: 600; }
+
+.exercise-log-panel {
+  background: #16131e;
+  border: 1px solid #2d2640;
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  padding: 14px 16px 16px;
+  margin-top: -10px;
+  padding-top: 20px;
+}
+
+.rest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(124,92,224,0.12);
+  border: 1px solid #3a2f5c;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.rest-text { display: flex; flex-direction: column; gap: 2px; }
+.rest-text strong { color: #b9a4f2; font-size: 15px; }
+.rest-text span { color: #8a7eac; font-size: 12px; }
+.rest-play-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #7c5ce0;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.rest-play-btn:disabled { opacity: 0.6; }
+
+.set-grid { margin-bottom: 10px; }
+.set-grid-header, .set-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 1fr 36px;
+  gap: 8px;
+  align-items: center;
+}
+.set-grid-header {
+  font-size: 11px;
+  color: #8a7eac;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+.set-row { margin-bottom: 8px; }
+.set-num { color: #8a7eac; font-size: 13px; font-weight: 700; text-align: center; }
+.set-reps, .set-weight {
+  background: #1b1724;
+  border: 1px solid #2d2640;
+  color: #e4e1ec;
+  border-radius: 10px;
+  padding: 9px 8px;
+  font-size: 15px;
+  width: 100%;
+  text-align: center;
+}
+.set-check {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid #3d3456;
+  background: transparent;
+  color: #5a4f78;
+  font-size: 14px;
+  cursor: pointer;
+}
+.set-check.done {
+  background: #5bc0a8;
+  border-color: #5bc0a8;
+  color: #0e1a17;
+}
+.add-set-btn {
+  background: none;
+  border: 1px dashed #3d3456;
+  color: #b9a4f2;
+  border-radius: 10px;
+  padding: 8px;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+.note-input {
+  width: 100%;
+  background: #1b1724;
+  border: 1px solid #2d2640;
+  color: #e4e1ec;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  min-height: 44px;
+  resize: vertical;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+.log-actions { display: flex; gap: 10px; }
+.log-actions .primary-btn { flex: 1; margin: 0; padding: 12px; font-size: 14px; }
+
+/* ============================================================
+   PLAN DAY COMPLETION CHECKMARK
+   ============================================================ */
+.day-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #5bc0a8;
+  color: #0e1a17;
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 4px;
+}
