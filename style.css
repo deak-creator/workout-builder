@@ -438,6 +438,7 @@ button { font-family: inherit; }
 }
 
 /* ---------- barcode scanner modal ---------- */
+.scanner-modal[hidden] { display: none; }
 .scanner-modal {
   position: fixed;
   inset: 0;
