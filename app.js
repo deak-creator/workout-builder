@@ -540,7 +540,7 @@ if ("serviceWorker" in navigator) {
 // ============================================================
 function updateHomeStats() {
   const savedWorkouts = JSON.parse(localStorage.getItem("savedWorkouts") || "[]");
-  const todayLog = getTodayFoodLog();
+  const todayLog = getFoodLogFor(todayKey());
   const totals = sumNutrients(todayLog);
   const calEl = document.getElementById("stat-calories");
   const woEl = document.getElementById("stat-workouts");
@@ -570,9 +570,11 @@ document.querySelectorAll(".action-tile").forEach(tile => {
       document.getElementById("duration-label").textContent = state.mode === "plan" ? "Minutes per day" : "Duration";
       document.getElementById("generate-btn").textContent = state.mode === "plan" ? "Generate Plan" : "Generate Workout";
     }
-    showTab(goto);
     if (tile.dataset.openscan) {
-      setTimeout(() => openScanner(), 300);
+      showTab(goto);
+      openScanner();
+    } else {
+      showTab(goto);
     }
   });
 });
@@ -600,21 +602,47 @@ showTab = function (id) {
 };
 
 // ============================================================
-// NUTRITION — food log storage
+// NUTRITION — date-aware food log storage
 // ============================================================
+let activeFoodDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, defaults to today
+
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function dateKey(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function getFoodLogAll() {
+  return JSON.parse(localStorage.getItem("foodLog") || "{}");
+}
+
+function getFoodLogFor(key) {
+  const all = getFoodLogAll();
+  return all[key] || [];
+}
+
 function getTodayFoodLog() {
-  const all = JSON.parse(localStorage.getItem("foodLog") || "{}");
-  return all[todayKey()] || [];
+  return getFoodLogFor(activeFoodDate);
+}
+
+function saveFoodLogFor(key, entries) {
+  const all = getFoodLogAll();
+  all[key] = entries;
+  localStorage.setItem("foodLog", JSON.stringify(all));
 }
 
 function saveTodayFoodLog(entries) {
-  const all = JSON.parse(localStorage.getItem("foodLog") || "{}");
-  all[todayKey()] = entries;
-  localStorage.setItem("foodLog", JSON.stringify(all));
+  saveFoodLogFor(activeFoodDate, entries);
+}
+
+function getCalorieGoal() {
+  return parseInt(localStorage.getItem("calorieGoal") || "2000", 10);
+}
+
+function setCalorieGoal(val) {
+  localStorage.setItem("calorieGoal", String(val));
 }
 
 function sumNutrients(entries) {
@@ -627,18 +655,73 @@ function sumNutrients(entries) {
   }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 }
 
+function renderDateStrip() {
+  const stripEl = document.getElementById("date-strip");
+  stripEl.innerHTML = "";
+  const all = getFoodLogAll();
+  const today = new Date();
+  const dowNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // show last 13 days + today (14 total), oldest first so "today" sits at the right edge
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+
+  days.forEach(d => {
+    const key = dateKey(d);
+    const isToday = key === todayKey();
+    const hasEntries = (all[key] || []).length > 0;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "date-chip" + (key === activeFoodDate ? " selected" : "") + (hasEntries ? " has-entries" : "");
+    chip.setAttribute("role", "tab");
+    chip.setAttribute("aria-selected", key === activeFoodDate ? "true" : "false");
+    chip.innerHTML = `
+      <span class="dow">${isToday ? "Today" : dowNames[d.getDay()]}</span>
+      <span class="dom">${d.getDate()}</span>
+      <span class="dot"></span>
+    `;
+    chip.addEventListener("click", () => {
+      activeFoodDate = key;
+      renderFoodLog();
+    });
+    stripEl.appendChild(chip);
+  });
+
+  // auto-scroll to the end (today) on first render
+  requestAnimationFrame(() => { stripEl.scrollLeft = stripEl.scrollWidth; });
+}
+
 function renderFoodLog() {
+  renderDateStrip();
+
   const entries = getTodayFoodLog();
   const totals = sumNutrients(entries);
+  const goal = getCalorieGoal();
+
   document.getElementById("n-cal").textContent = Math.round(totals.calories);
+  document.getElementById("n-cal-goal").textContent = goal;
   document.getElementById("n-protein").textContent = Math.round(totals.protein);
   document.getElementById("n-carbs").textContent = Math.round(totals.carbs);
   document.getElementById("n-fat").textContent = Math.round(totals.fat);
 
+  const pct = goal > 0 ? Math.min(100, (totals.calories / goal) * 100) : 0;
+  const fillEl = document.getElementById("cal-progress-fill");
+  fillEl.style.width = pct + "%";
+  fillEl.classList.toggle("over", totals.calories > goal);
+
+  const isToday = activeFoodDate === todayKey();
+  const dateLabel = isToday ? "Today" : new Date(activeFoodDate + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  document.getElementById("day-totals-heading").textContent = `${dateLabel}'s Totals`;
+  document.getElementById("food-log-heading").textContent = `Logged ${isToday ? "Today" : "on " + dateLabel}`;
+
   const listEl = document.getElementById("food-log-list");
   listEl.innerHTML = "";
   if (!entries.length) {
-    listEl.innerHTML = `<div class="empty-state">No food logged today.<br>Scan a barcode to get started.</div>`;
+    listEl.innerHTML = `<div class="empty-state">No food logged ${isToday ? "today" : "this day"}.${isToday ? "<br>Scan a barcode to get started." : ""}</div>`;
     return;
   }
   entries.forEach((e, i) => {
@@ -665,11 +748,27 @@ function renderFoodLog() {
 }
 
 function addFoodEntry(entry) {
+  activeFoodDate = todayKey(); // always log new scans to today
   const entries = getTodayFoodLog();
   entries.unshift({ ...entry, loggedAt: new Date().toISOString() });
   saveTodayFoodLog(entries);
   renderFoodLog();
 }
+
+// ---------- calorie goal modal ----------
+document.getElementById("cal-goal-btn").addEventListener("click", () => {
+  document.getElementById("goal-input").value = getCalorieGoal();
+  document.getElementById("goal-modal").hidden = false;
+});
+document.getElementById("goal-cancel-btn").addEventListener("click", () => {
+  document.getElementById("goal-modal").hidden = true;
+});
+document.getElementById("goal-save-btn").addEventListener("click", () => {
+  const val = parseInt(document.getElementById("goal-input").value, 10);
+  if (val > 0) setCalorieGoal(val);
+  document.getElementById("goal-modal").hidden = true;
+  renderFoodLog();
+});
 
 // ============================================================
 // NUTRITION — Open Food Facts lookup
@@ -742,32 +841,50 @@ document.getElementById("manual-barcode-form").addEventListener("submit", e => {
 let zxingReader = null;
 let scannerStream = null;
 
-async function openScanner() {
+function openScanner() {
   const modal = document.getElementById("scanner-modal");
   const statusEl = document.getElementById("scanner-status");
   const video = document.getElementById("scanner-video");
   modal.hidden = false;
-  statusEl.textContent = "Point your camera at a barcode";
+  statusEl.textContent = "Requesting camera access…";
 
   if (typeof ZXing === "undefined") {
     statusEl.textContent = "Scanner library failed to load. Use manual entry instead.";
     return;
   }
 
-  try {
-    zxingReader = new ZXing.BrowserMultiFormatReader();
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const deviceId = devices.length ? devices[devices.length - 1].deviceId : undefined;
-    zxingReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-      if (result) {
-        statusEl.textContent = `Found: ${result.getText()}`;
-        closeScanner();
-        lookupBarcode(result.getText());
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    statusEl.textContent = "Camera isn't available on this browser. Use manual entry below.";
+    return;
+  }
+
+  // Must call getUserMedia synchronously within the click handler on iOS Safari —
+  // any delay (setTimeout, extra await before the first media call) causes a silent denial.
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(stream => {
+      scannerStream = stream;
+      video.srcObject = stream;
+      video.play().catch(() => {});
+      statusEl.textContent = "Point your camera at a barcode";
+
+      zxingReader = new ZXing.BrowserMultiFormatReader();
+      zxingReader.decodeFromStream(stream, video, (result, err) => {
+        if (result) {
+          statusEl.textContent = `Found: ${result.getText()}`;
+          closeScanner();
+          lookupBarcode(result.getText());
+        }
+      });
+    })
+    .catch(err => {
+      if (err && err.name === "NotAllowedError") {
+        statusEl.textContent = "Camera permission denied. Enable it in Settings → Safari → Camera, or use manual entry below.";
+      } else if (err && err.name === "NotFoundError") {
+        statusEl.textContent = "No camera found on this device. Use manual entry below.";
+      } else {
+        statusEl.textContent = "Camera unavailable (" + (err && err.message ? err.message : "unknown error") + "). Use manual entry below.";
       }
     });
-  } catch (err) {
-    statusEl.textContent = "Camera access denied or unavailable. Use manual entry below.";
-  }
 }
 
 function closeScanner() {
@@ -777,6 +894,12 @@ function closeScanner() {
     try { zxingReader.reset(); } catch (e) {}
     zxingReader = null;
   }
+  if (scannerStream) {
+    scannerStream.getTracks().forEach(t => t.stop());
+    scannerStream = null;
+  }
+  const video = document.getElementById("scanner-video");
+  if (video) video.srcObject = null;
 }
 
 document.getElementById("scan-btn").addEventListener("click", openScanner);
