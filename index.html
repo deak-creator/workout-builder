@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Workouts">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="theme-color" content="#121018">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 </head>
 <body>
@@ -121,6 +121,12 @@
 
       <section class="card plan-only" hidden>
         <p class="plan-note">Each day in your plan will be a different workout type (strength, cardio, fat loss, mobility) for balanced, varied training.</p>
+      </section>
+
+      <section class="card">
+        <h2 id="goal-prompt-label">Anything specific you want to achieve?</h2>
+        <textarea id="goal-prompt-input" class="goal-prompt-input" rows="2" placeholder="e.g. Build lean muscle and get stronger, less cardio, focus on upper body &amp; back" aria-labelledby="goal-prompt-label"></textarea>
+        <p class="goal-prompt-hint" id="goal-prompt-hint"></p>
       </section>
 
       <section class="card">
@@ -379,6 +385,6 @@
   </nav>
 
 </div>
-<script src="app.js?v=13"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
