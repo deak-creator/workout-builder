@@ -1250,7 +1250,7 @@ function renderScanResult(item) {
         <div class="stat"><div class="stat-value">${Math.round(item.carbs)}</div><div class="stat-label">carbs g</div></div>
         <div class="stat"><div class="stat-value">${Math.round(item.fat)}</div><div class="stat-label">fat g</div></div>
       </div>
-      <div style="font-size:12px;color:#978cb3;margin-bottom:10px;">Per serving: ${item.serving}</div>
+      <div style="font-size:12px;color:#9580c8;margin-bottom:10px;">Per serving: ${item.serving}</div>
       <button type="button" class="primary-btn result-add">Add to Today's Log</button>
     </div>
   `;
