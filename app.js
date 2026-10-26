@@ -1269,15 +1269,48 @@ document.getElementById("qa-search-input").addEventListener("input", e => {
   qaSearchTimer = setTimeout(() => qaRunSearch(q), 350);
 });
 
+// Open Food Facts' search backend returns intermittent 503s under load (not a
+// connectivity problem on the user's end) — retry a couple of times with a short
+// backoff before giving up, and fetch from a couple of mirrors in case one is down.
+const QA_SEARCH_ENDPOINTS = [
+  query => `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_small_url,code`,
+  query => `https://au.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_small_url,code`
+];
+
+function qaDelay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function qaFetchSearchWithRetry(query, signal) {
+  let lastErr = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const endpoint = QA_SEARCH_ENDPOINTS[attempt % QA_SEARCH_ENDPOINTS.length];
+    try {
+      const resp = await fetch(endpoint(query), { signal });
+      if (resp.status === 503 || resp.status === 502 || resp.status === 429) {
+        lastErr = new Error(`Server busy (${resp.status})`);
+        if (attempt < 2) { await qaDelay(500 * (attempt + 1)); continue; }
+        throw lastErr;
+      }
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return await resp.json();
+    } catch (err) {
+      if (signal.aborted) throw err;
+      lastErr = err;
+      if (attempt < 2) { await qaDelay(500 * (attempt + 1)); continue; }
+      throw lastErr;
+    }
+  }
+  throw lastErr;
+}
+
 async function qaRunSearch(query) {
   const resultsEl = document.getElementById("qa-search-results");
   if (qaSearchAbort) qaSearchAbort.abort();
   const ctrl = new AbortController();
   qaSearchAbort = ctrl;
   try {
-    const url = `https://au.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_small_url,code`;
-    const resp = await fetch(url, { signal: ctrl.signal });
-    const data = await resp.json();
+    const data = await qaFetchSearchWithRetry(query, ctrl.signal);
     if (ctrl.signal.aborted) return;
     const products = (data.products || []).filter(p => p.product_name);
     if (!products.length) {
@@ -1295,7 +1328,7 @@ async function qaRunSearch(query) {
     });
   } catch (err) {
     if (ctrl.signal.aborted) return;
-    resultsEl.innerHTML = `<div class="qa-result-empty">Couldn't reach the food database. Check your connection and try again.</div>`;
+    resultsEl.innerHTML = `<div class="qa-result-empty">The food database is temporarily busy. Wait a moment and try searching again.</div>`;
   }
 }
 
