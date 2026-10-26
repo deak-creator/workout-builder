@@ -573,6 +573,7 @@ function renderSaved() {
   list.innerHTML = "";
   if (!saved.length) {
     list.innerHTML = `<div class="empty-state">Nothing saved yet.<br>Build a workout or plan in the Build tab.</div>`;
+    renderSavedMeals();
     return;
   }
   const titleMap = { strength: "Strength", cardio: "Cardio", fatloss: "Fat Loss", mobility: "Mobility", general: "General Fitness" };
