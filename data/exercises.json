@@ -729,5 +729,323 @@
     "equipment": "bodyweight",
     "difficulty": "advanced",
     "type": "strength"
+  },
+  {
+    "name": "Barbell Back Squat",
+    "muscles": [
+      "quads",
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Deadlift",
+    "muscles": [
+      "hamstrings",
+      "glutes",
+      "lower back",
+      "back"
+    ],
+    "equipment": "barbell",
+    "difficulty": "advanced",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Bench Press",
+    "muscles": [
+      "chest",
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Overhead Press",
+    "muscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Row",
+    "muscles": [
+      "back",
+      "biceps"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Romanian Deadlift",
+    "muscles": [
+      "hamstrings",
+      "glutes",
+      "lower back"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Front Squat",
+    "muscles": [
+      "quads",
+      "glutes",
+      "core"
+    ],
+    "equipment": "barbell",
+    "difficulty": "advanced",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Hip Thrust",
+    "muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Bicep Curl",
+    "muscles": [
+      "biceps"
+    ],
+    "equipment": "barbell",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Lunge",
+    "muscles": [
+      "quads",
+      "glutes"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Barbell Hip Thrust (seated back support)",
+    "muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "barbell",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Lat Pulldown",
+    "muscles": [
+      "back",
+      "biceps"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Seated Row",
+    "muscles": [
+      "back",
+      "biceps"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Tricep Pushdown",
+    "muscles": [
+      "triceps"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Chest Fly",
+    "muscles": [
+      "chest"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Face Pull",
+    "muscles": [
+      "shoulders",
+      "back"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Bicep Curl",
+    "muscles": [
+      "biceps"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Woodchopper",
+    "muscles": [
+      "core",
+      "shoulders"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "intermediate",
+    "type": "core"
+  },
+  {
+    "name": "Cable Lateral Raise",
+    "muscles": [
+      "shoulders"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Kickback",
+    "muscles": [
+      "glutes"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Overhead Tricep Extension",
+    "muscles": [
+      "triceps"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Cable Standing Chest Press",
+    "muscles": [
+      "chest",
+      "triceps"
+    ],
+    "equipment": "cable machine",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Seated Dumbbell Shoulder Press",
+    "muscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "bench",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Seated Dumbbell Bicep Curl",
+    "muscles": [
+      "biceps"
+    ],
+    "equipment": "bench",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Incline Dumbbell Bench Press",
+    "muscles": [
+      "chest",
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "bench",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Flat Bench Dumbbell Press",
+    "muscles": [
+      "chest",
+      "triceps"
+    ],
+    "equipment": "bench",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Seated Barbell Overhead Press",
+    "muscles": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "bench",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Bench Tricep Dip",
+    "muscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": "bench",
+    "difficulty": "intermediate",
+    "type": "strength"
+  },
+  {
+    "name": "Seated Leg Raise (bench)",
+    "muscles": [
+      "core",
+      "hip flexors"
+    ],
+    "equipment": "bench",
+    "difficulty": "intermediate",
+    "type": "core"
+  },
+  {
+    "name": "Single-Arm Dumbbell Row (bench supported)",
+    "muscles": [
+      "back",
+      "biceps"
+    ],
+    "equipment": "bench",
+    "difficulty": "beginner",
+    "type": "strength"
+  },
+  {
+    "name": "Bulgarian Split Squat (bench)",
+    "muscles": [
+      "quads",
+      "glutes"
+    ],
+    "equipment": "bench",
+    "difficulty": "advanced",
+    "type": "strength"
+  },
+  {
+    "name": "Seated Dumbbell Lateral Raise",
+    "muscles": [
+      "shoulders"
+    ],
+    "equipment": "bench",
+    "difficulty": "beginner",
+    "type": "strength"
   }
 ]
