@@ -637,12 +637,59 @@ function saveTodayFoodLog(entries) {
   saveFoodLogFor(activeFoodDate, entries);
 }
 
-function getCalorieGoal() {
-  return parseInt(localStorage.getItem("calorieGoal") || "2000", 10);
+// ---------- nutrition targets (calories + macros, goal-aware) ----------
+const DEFAULT_TARGETS = { calories: 2000, protein: 150, carbs: 200, fat: 65, goalType: "maintain" };
+
+function getNutritionTargets() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("nutritionTargets"));
+    if (stored && stored.calories) return stored;
+  } catch (e) {}
+  return { ...DEFAULT_TARGETS };
 }
 
-function setCalorieGoal(val) {
-  localStorage.setItem("calorieGoal", String(val));
+function setNutritionTargets(targets) {
+  localStorage.setItem("nutritionTargets", JSON.stringify(targets));
+}
+
+// backward-compat shim: some code paths may still ask for just the calorie number
+function getCalorieGoal() {
+  return getNutritionTargets().calories;
+}
+
+// Mifflin-St Jeor BMR -> TDEE -> goal-adjusted calories -> macro split
+function calculateTargets({ sex, age, weightKg, heightCm, activityFactor, goalType }) {
+  const bmr = sex === "female"
+    ? 10 * weightKg + 6.25 * heightCm - 5 * age - 161
+    : 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+  const tdee = bmr * activityFactor;
+
+  let calories = tdee;
+  let proteinPerKg = 1.8;
+  let fatPct = 0.25;
+
+  if (goalType === "lose") {
+    calories = tdee - 500;
+    proteinPerKg = 2.0; // higher protein to preserve muscle in a deficit
+    fatPct = 0.25;
+  } else if (goalType === "gain") {
+    calories = tdee + 300;
+    proteinPerKg = 1.8;
+    fatPct = 0.22;
+  } else {
+    calories = tdee;
+    proteinPerKg = 1.6;
+    fatPct = 0.27;
+  }
+  calories = Math.max(1200, Math.round(calories));
+
+  const protein = Math.round(weightKg * proteinPerKg);
+  const fat = Math.round((calories * fatPct) / 9);
+  const proteinCals = protein * 4;
+  const fatCals = fat * 9;
+  const carbs = Math.max(0, Math.round((calories - proteinCals - fatCals) / 4));
+
+  return { calories, protein, carbs, fat, goalType };
 }
 
 function sumNutrients(entries) {
@@ -700,18 +747,28 @@ function renderFoodLog() {
 
   const entries = getTodayFoodLog();
   const totals = sumNutrients(entries);
-  const goal = getCalorieGoal();
+  const targets = getNutritionTargets();
 
   document.getElementById("n-cal").textContent = Math.round(totals.calories);
-  document.getElementById("n-cal-goal").textContent = goal;
-  document.getElementById("n-protein").textContent = Math.round(totals.protein);
-  document.getElementById("n-carbs").textContent = Math.round(totals.carbs);
-  document.getElementById("n-fat").textContent = Math.round(totals.fat);
+  document.getElementById("n-cal-goal").textContent = targets.calories;
 
-  const pct = goal > 0 ? Math.min(100, (totals.calories / goal) * 100) : 0;
+  const pct = targets.calories > 0 ? Math.min(100, (totals.calories / targets.calories) * 100) : 0;
   const fillEl = document.getElementById("cal-progress-fill");
   fillEl.style.width = pct + "%";
-  fillEl.classList.toggle("over", totals.calories > goal);
+  fillEl.classList.toggle("over", totals.calories > targets.calories);
+
+  const goalLabels = { lose: "Lose Fat", maintain: "Maintain", gain: "Build Muscle" };
+  const badgeEl = document.getElementById("goal-type-badge");
+  if (badgeEl) badgeEl.textContent = goalLabels[targets.goalType] || "Maintain";
+
+  function setMacroBar(key, value, target) {
+    const pctVal = target > 0 ? Math.min(100, (value / target) * 100) : 0;
+    document.getElementById(`${key}-fill`).style.width = pctVal + "%";
+    document.getElementById(`n-${key}-text`).textContent = `${Math.round(value)} / ${target}g`;
+  }
+  setMacroBar("protein", totals.protein, targets.protein);
+  setMacroBar("carbs", totals.carbs, targets.carbs);
+  setMacroBar("fat", totals.fat, targets.fat);
 
   const isToday = activeFoodDate === todayKey();
   const dateLabel = isToday ? "Today" : new Date(activeFoodDate + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
@@ -755,17 +812,91 @@ function addFoodEntry(entry) {
   renderFoodLog();
 }
 
-// ---------- calorie goal modal ----------
+// ---------- nutrition goal modal ----------
+const goalModalState = { goalmode: "calculate", nutriGoal: "maintain", sex: "male", activity: "1.375" };
+
+document.querySelectorAll('[data-field="goalmode"], [data-field="nutriGoal"], [data-field="sex"], [data-field="activity"]').forEach(group => {
+  const field = group.dataset.field;
+  group.addEventListener("click", e => {
+    const btn = e.target.closest(".chip, .mode-btn");
+    if (!btn) return;
+    group.querySelectorAll(".chip, .mode-btn").forEach(c => {
+      c.classList.remove("selected");
+      c.setAttribute("aria-selected", "false");
+    });
+    btn.classList.add("selected");
+    btn.setAttribute("aria-selected", "true");
+    goalModalState[field] = btn.dataset.value;
+
+    if (field === "goalmode") {
+      const isManual = btn.dataset.value === "manual";
+      document.getElementById("goal-calc-fields").hidden = isManual;
+      document.getElementById("goal-manual-fields").hidden = !isManual;
+    }
+    updateGoalPreview();
+  });
+});
+
+function updateGoalPreview() {
+  const previewEl = document.getElementById("goal-preview");
+  if (!previewEl || goalModalState.goalmode !== "calculate") return;
+  const age = parseFloat(document.getElementById("goal-age").value);
+  const weightKg = parseFloat(document.getElementById("goal-weight").value);
+  const heightCm = parseFloat(document.getElementById("goal-height").value);
+  if (!age || !weightKg || !heightCm) {
+    previewEl.innerHTML = "Enter your details above to see your personalised targets.";
+    return;
+  }
+  const t = calculateTargets({
+    sex: goalModalState.sex,
+    age, weightKg, heightCm,
+    activityFactor: parseFloat(goalModalState.activity),
+    goalType: goalModalState.nutriGoal
+  });
+  previewEl.innerHTML = `Target: <strong>${t.calories} kcal</strong><br>Protein <strong>${t.protein}g</strong> · Carbs <strong>${t.carbs}g</strong> · Fat <strong>${t.fat}g</strong>`;
+}
+
+["goal-age", "goal-weight", "goal-height"].forEach(id => {
+  document.getElementById(id).addEventListener("input", updateGoalPreview);
+});
+
 document.getElementById("cal-goal-btn").addEventListener("click", () => {
-  document.getElementById("goal-input").value = getCalorieGoal();
+  const targets = getNutritionTargets();
+  document.getElementById("manual-cal").value = targets.calories;
+  document.getElementById("manual-protein").value = targets.protein;
+  document.getElementById("manual-carbs").value = targets.carbs;
+  document.getElementById("manual-fat").value = targets.fat;
   document.getElementById("goal-modal").hidden = false;
 });
 document.getElementById("goal-cancel-btn").addEventListener("click", () => {
   document.getElementById("goal-modal").hidden = true;
 });
 document.getElementById("goal-save-btn").addEventListener("click", () => {
-  const val = parseInt(document.getElementById("goal-input").value, 10);
-  if (val > 0) setCalorieGoal(val);
+  let targets;
+  if (goalModalState.goalmode === "manual") {
+    targets = {
+      calories: parseInt(document.getElementById("manual-cal").value, 10) || DEFAULT_TARGETS.calories,
+      protein: parseInt(document.getElementById("manual-protein").value, 10) || DEFAULT_TARGETS.protein,
+      carbs: parseInt(document.getElementById("manual-carbs").value, 10) || DEFAULT_TARGETS.carbs,
+      fat: parseInt(document.getElementById("manual-fat").value, 10) || DEFAULT_TARGETS.fat,
+      goalType: goalModalState.nutriGoal
+    };
+  } else {
+    const age = parseFloat(document.getElementById("goal-age").value);
+    const weightKg = parseFloat(document.getElementById("goal-weight").value);
+    const heightCm = parseFloat(document.getElementById("goal-height").value);
+    if (!age || !weightKg || !heightCm) {
+      alert("Please enter age, weight, and height to calculate your targets, or switch to manual entry.");
+      return;
+    }
+    targets = calculateTargets({
+      sex: goalModalState.sex,
+      age, weightKg, heightCm,
+      activityFactor: parseFloat(goalModalState.activity),
+      goalType: goalModalState.nutriGoal
+    });
+  }
+  setNutritionTargets(targets);
   document.getElementById("goal-modal").hidden = true;
   renderFoodLog();
 });
