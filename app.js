@@ -619,6 +619,53 @@ function renderSaved() {
     });
     list.appendChild(item);
   });
+
+  renderSavedMeals();
+}
+
+function renderSavedMeals() {
+  const mealsListEl = document.getElementById("saved-meals-list");
+  if (!mealsListEl) return;
+  const meals = qaGetSavedMeals();
+  mealsListEl.innerHTML = "";
+  if (!meals.length) {
+    mealsListEl.innerHTML = `<div class="empty-state">No saved meals yet.<br>Use Quick Add Ingredient on the Food tab.</div>`;
+    return;
+  }
+  meals.forEach((meal, i) => {
+    const item = document.createElement("div");
+    item.className = "saved-item";
+    const date = new Date(meal.createdAt);
+    item.innerHTML = `
+      <div>
+        <div class="title">${meal.name}</div>
+        <div class="sub">${date.toLocaleDateString()} · ${Math.round(meal.perServing.calories)} kcal/serving · ${meal.servings.toFixed(2)} servings</div>
+      </div>
+      <button data-i="${i}">Delete</button>
+    `;
+    item.querySelector("div").addEventListener("click", () => {
+      addFoodEntry({
+        name: meal.name,
+        brand: "",
+        image: "",
+        serving: "1 serving",
+        calories: meal.perServing.calories,
+        protein: meal.perServing.protein,
+        carbs: meal.perServing.carbs,
+        fat: meal.perServing.fat
+      });
+      updateHomeStats();
+      showTab("nutrition-screen");
+    });
+    item.querySelector("button").addEventListener("click", e => {
+      e.stopPropagation();
+      const arr = qaGetSavedMeals();
+      arr.splice(i, 1);
+      qaSetSavedMeals(arr);
+      renderSavedMeals();
+    });
+    mealsListEl.appendChild(item);
+  });
 }
 
 // register service worker for offline/home-screen use.
@@ -1159,6 +1206,331 @@ function closeScanner() {
 
 document.getElementById("scan-btn").addEventListener("click", openScanner);
 document.getElementById("scanner-close-btn").addEventListener("click", closeScanner);
+
+
+// ============================================================
+// QUICK ADD — text search against Open Food Facts + multi-ingredient
+// meal builder (search -> ingredient cards -> name & save as meal)
+// ============================================================
+const UNIT_OPTIONS_BASE = [
+  { key: "serving", label: null, grams: null }, // filled in per-product from serving_quantity
+  { key: "g", label: "g", grams: 1 },
+  { key: "oz", label: "oz (28.3495 g)", grams: 28.3495 }
+];
+
+let qaIngredients = []; // [{ id, name, brand, image, baseGramsPer100: {calories,protein,carbs,fat}, servingGrams, qty, unit }]
+let qaIngredientSeq = 0;
+let qaSearchAbort = null;
+let qaUnitPopupTargetId = null;
+let qaSavedMeals = []; // loaded lazily
+
+function qaGetSavedMeals() {
+  return JSON.parse(localStorage.getItem("savedMeals") || "[]");
+}
+function qaSetSavedMeals(meals) {
+  localStorage.setItem("savedMeals", JSON.stringify(meals));
+}
+
+function qaOpenModal() {
+  qaIngredients = [];
+  qaIngredientSeq = 0;
+  document.getElementById("qa-search-input").value = "";
+  document.getElementById("qa-search-results").hidden = true;
+  document.getElementById("qa-search-results").innerHTML = "";
+  document.getElementById("qa-meal-name").value = "";
+  qaServings = 1;
+  qaRenderIngredients();
+  document.getElementById("qa-step-search").hidden = false;
+  document.getElementById("qa-step-finalize").hidden = true;
+  document.getElementById("quickadd-modal").hidden = false;
+}
+function qaCloseModal() {
+  document.getElementById("quickadd-modal").hidden = true;
+}
+
+document.getElementById("quickadd-btn").addEventListener("click", qaOpenModal);
+document.getElementById("qa-close-btn").addEventListener("click", qaCloseModal);
+document.getElementById("qa-close-btn-2").addEventListener("click", qaCloseModal);
+
+// ---------- search (debounced, AU Open Food Facts) ----------
+let qaSearchTimer = null;
+document.getElementById("qa-search-input").addEventListener("input", e => {
+  const q = e.target.value.trim();
+  clearTimeout(qaSearchTimer);
+  const resultsEl = document.getElementById("qa-search-results");
+  if (!q) {
+    resultsEl.hidden = true;
+    resultsEl.innerHTML = "";
+    return;
+  }
+  resultsEl.hidden = false;
+  resultsEl.innerHTML = `<div class="qa-result-loading">Searching…</div>`;
+  qaSearchTimer = setTimeout(() => qaRunSearch(q), 350);
+});
+
+async function qaRunSearch(query) {
+  const resultsEl = document.getElementById("qa-search-results");
+  if (qaSearchAbort) qaSearchAbort.abort();
+  const ctrl = new AbortController();
+  qaSearchAbort = ctrl;
+  try {
+    const url = `https://au.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=15&fields=product_name,brands,nutriments,serving_size,serving_quantity,image_small_url,code`;
+    const resp = await fetch(url, { signal: ctrl.signal });
+    const data = await resp.json();
+    if (ctrl.signal.aborted) return;
+    const products = (data.products || []).filter(p => p.product_name);
+    if (!products.length) {
+      resultsEl.innerHTML = `<div class="qa-result-empty">No matches for "${query}". Try a different search.</div>`;
+      return;
+    }
+    resultsEl.innerHTML = "";
+    products.slice(0, 12).forEach(p => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "qa-result-item";
+      btn.innerHTML = `${p.product_name}${p.brands ? `<span class="qa-result-brand">${p.brands}</span>` : ""}`;
+      btn.addEventListener("click", () => qaAddProduct(p));
+      resultsEl.appendChild(btn);
+    });
+  } catch (err) {
+    if (ctrl.signal.aborted) return;
+    resultsEl.innerHTML = `<div class="qa-result-empty">Couldn't reach the food database. Check your connection and try again.</div>`;
+  }
+}
+
+// ---------- add a searched product as an ingredient card ----------
+function qaAddProduct(p) {
+  const n = p.nutriments || {};
+  const per100 = {
+    calories: n["energy-kcal_100g"] ?? 0,
+    protein: n["proteins_100g"] ?? 0,
+    carbs: n["carbohydrates_100g"] ?? 0,
+    fat: n["fat_100g"] ?? 0
+  };
+  const servingGrams = n["serving_quantity"] ? parseFloat(n["serving_quantity"]) : 100;
+  const ing = {
+    id: ++qaIngredientSeq,
+    name: p.product_name,
+    brand: p.brands || "",
+    per100,
+    servingGrams,
+    servingLabel: p.serving_size ? `serving (${Math.round(servingGrams)} g)` : `serving (${Math.round(servingGrams)} g)`,
+    qty: 1,
+    unit: "serving"
+  };
+  qaIngredients.push(ing);
+  document.getElementById("qa-search-input").value = "";
+  document.getElementById("qa-search-results").hidden = true;
+  document.getElementById("qa-search-results").innerHTML = "";
+  qaRenderIngredients();
+}
+
+// grams represented by current qty+unit for a given ingredient
+function qaIngredientGrams(ing) {
+  if (ing.unit === "serving") return ing.qty * ing.servingGrams;
+  if (ing.unit === "g") return ing.qty * 1;
+  if (ing.unit === "oz") return ing.qty * 28.3495;
+  return ing.qty * ing.servingGrams;
+}
+function qaIngredientMacros(ing) {
+  const grams = qaIngredientGrams(ing);
+  const factor = grams / 100;
+  return {
+    calories: ing.per100.calories * factor,
+    protein: ing.per100.protein * factor,
+    carbs: ing.per100.carbs * factor,
+    fat: ing.per100.fat * factor
+  };
+}
+function qaTotals() {
+  return qaIngredients.reduce((acc, ing) => {
+    const m = qaIngredientMacros(ing);
+    acc.calories += m.calories; acc.protein += m.protein; acc.carbs += m.carbs; acc.fat += m.fat;
+    return acc;
+  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+}
+function qaFormatTotals(t) {
+  return `${Math.round(t.calories)} kcal · P ${Math.round(t.protein)}g · C ${Math.round(t.carbs)}g · F ${Math.round(t.fat)}g`;
+}
+
+function qaRenderIngredients() {
+  const listEl = document.getElementById("qa-ingredients-list");
+  const headingEl = document.getElementById("qa-ingredients-heading");
+  const totalRowEl = document.getElementById("qa-total-row");
+  const nextBtn = document.getElementById("qa-next-btn");
+
+  headingEl.textContent = `Ingredients (${qaIngredients.length})`;
+  nextBtn.disabled = qaIngredients.length === 0;
+
+  if (!qaIngredients.length) {
+    listEl.innerHTML = `<div class="empty-state">Search above and tap a result to add it.</div>`;
+    totalRowEl.hidden = true;
+    return;
+  }
+
+  totalRowEl.hidden = false;
+  document.getElementById("qa-total-text").textContent = qaFormatTotals(qaTotals());
+
+  listEl.innerHTML = "";
+  qaIngredients.forEach(ing => {
+    const m = qaIngredientMacros(ing);
+    const unitLabel = ing.unit === "serving" ? ing.servingLabel : ing.unit === "g" ? "g" : "oz (28.3495 g)";
+    const card = document.createElement("div");
+    card.className = "qa-ingredient-card";
+    card.innerHTML = `
+      <div class="qa-ing-top">
+        <div>
+          <div class="qa-ing-name">${ing.name}</div>
+          ${ing.brand ? `<div class="qa-ing-brand">${ing.brand}</div>` : ""}
+        </div>
+        <button type="button" class="qa-ing-remove" aria-label="Remove ${ing.name}">🗑</button>
+      </div>
+      <div class="qa-ing-controls">
+        <input type="number" class="qa-ing-qty" value="${ing.qty}" min="0" step="0.5">
+        <button type="button" class="qa-ing-unit-btn">${unitLabel}</button>
+      </div>
+      <div class="qa-ing-macros">
+        <span>P <strong>${Math.round(m.protein)}g</strong></span>
+        <span>F <strong>${Math.round(m.fat)}g</strong></span>
+        <span>C <strong>${Math.round(m.carbs)}g</strong></span>
+        <span>Cal <strong>${Math.round(m.calories)}</strong></span>
+      </div>
+    `;
+    card.querySelector(".qa-ing-remove").addEventListener("click", () => {
+      qaIngredients = qaIngredients.filter(x => x.id !== ing.id);
+      qaRenderIngredients();
+    });
+    card.querySelector(".qa-ing-qty").addEventListener("input", e => {
+      const v = parseFloat(e.target.value);
+      ing.qty = isNaN(v) || v < 0 ? 0 : v;
+      qaRenderIngredients();
+    });
+    card.querySelector(".qa-ing-unit-btn").addEventListener("click", () => qaOpenUnitPopup(ing));
+    listEl.appendChild(card);
+  });
+}
+
+// ---------- unit picker popup ----------
+function qaOpenUnitPopup(ing) {
+  qaUnitPopupTargetId = ing.id;
+  const optsEl = document.getElementById("qa-unit-options");
+  const options = [
+    { key: "serving", label: ing.servingLabel },
+    { key: "g", label: "g" },
+    { key: "oz", label: "oz (28.3495 g)" }
+  ];
+  optsEl.innerHTML = "";
+  options.forEach(o => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "qa-unit-option" + (ing.unit === o.key ? " selected" : "");
+    btn.textContent = o.label;
+    btn.addEventListener("click", () => {
+      ing.unit = o.key;
+      document.getElementById("qa-unit-popup").hidden = true;
+      qaRenderIngredients();
+    });
+    optsEl.appendChild(btn);
+  });
+  document.getElementById("qa-unit-popup").hidden = false;
+}
+document.getElementById("qa-unit-cancel-btn").addEventListener("click", () => {
+  document.getElementById("qa-unit-popup").hidden = true;
+});
+
+// ---------- step navigation ----------
+document.getElementById("qa-next-btn").addEventListener("click", () => {
+  if (!qaIngredients.length) return;
+  document.getElementById("qa-step-search").hidden = true;
+  document.getElementById("qa-step-finalize").hidden = false;
+  qaRenderFinalize();
+});
+document.getElementById("qa-back-btn").addEventListener("click", () => {
+  document.getElementById("qa-step-finalize").hidden = true;
+  document.getElementById("qa-step-search").hidden = false;
+});
+
+let qaServings = 1;
+function qaRenderFinalize() {
+  const recapEl = document.getElementById("qa-recap-list");
+  recapEl.innerHTML = "";
+  qaIngredients.forEach(ing => {
+    const m = qaIngredientMacros(ing);
+    const row = document.createElement("div");
+    row.className = "qa-recap-item";
+    row.innerHTML = `<span class="qa-recap-name">${ing.name}</span><span>${Math.round(m.calories)} kcal</span>`;
+    recapEl.appendChild(row);
+  });
+  const totals = qaTotals();
+  document.getElementById("qa-total-text-2").textContent = qaFormatTotals(totals);
+  document.getElementById("qa-servings-value").textContent = qaServings.toFixed(2);
+  const per = {
+    calories: totals.calories / qaServings,
+    protein: totals.protein / qaServings,
+    carbs: totals.carbs / qaServings,
+    fat: totals.fat / qaServings
+  };
+  document.getElementById("qa-per-serving-text").textContent = `Per serving: ${qaFormatTotals(per)}`;
+}
+document.getElementById("qa-servings-minus").addEventListener("click", () => {
+  qaServings = Math.max(0.25, Math.round((qaServings - 0.25) * 100) / 100);
+  qaRenderFinalize();
+});
+document.getElementById("qa-servings-plus").addEventListener("click", () => {
+  qaServings = Math.round((qaServings + 0.25) * 100) / 100;
+  qaRenderFinalize();
+});
+
+// ---------- save / log ----------
+function qaBuildMealObject() {
+  const totals = qaTotals();
+  const name = document.getElementById("qa-meal-name").value.trim() || "Unnamed Meal";
+  return {
+    name,
+    servings: qaServings,
+    ingredients: qaIngredients.map(ing => ({ name: ing.name, brand: ing.brand, grams: qaIngredientGrams(ing) })),
+    totals,
+    perServing: {
+      calories: totals.calories / qaServings,
+      protein: totals.protein / qaServings,
+      carbs: totals.carbs / qaServings,
+      fat: totals.fat / qaServings
+    },
+    createdAt: new Date().toISOString()
+  };
+}
+
+function qaSaveMealToLibrary(meal) {
+  const meals = qaGetSavedMeals();
+  meals.unshift(meal);
+  qaSetSavedMeals(meals);
+}
+
+document.getElementById("qa-save-only-btn").addEventListener("click", () => {
+  const meal = qaBuildMealObject();
+  qaSaveMealToLibrary(meal);
+  qaCloseModal();
+  renderSaved();
+});
+
+document.getElementById("qa-log-save-btn").addEventListener("click", () => {
+  const meal = qaBuildMealObject();
+  qaSaveMealToLibrary(meal);
+  // log one serving's worth of nutrition to today's food log
+  addFoodEntry({
+    name: meal.name,
+    brand: "",
+    image: "",
+    serving: "1 serving",
+    calories: meal.perServing.calories,
+    protein: meal.perServing.protein,
+    carbs: meal.perServing.carbs,
+    fat: meal.perServing.fat
+  });
+  qaCloseModal();
+  updateHomeStats();
+  renderSaved();
+});
 
 // ============================================================
 // init
