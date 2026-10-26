@@ -653,10 +653,20 @@ function renderSaved() {
   });
 }
 
-// register service worker for offline/home-screen use
+// register service worker for offline/home-screen use.
+// Also force an immediate reload once a newly installed worker takes control,
+// so the phone never gets stuck showing an old cached build.
 if ("serviceWorker" in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
   });
 }
 
@@ -699,7 +709,7 @@ function setMiniRing(key, value, target) {
   if (text) text.textContent = `${Math.round(value)}g`;
 }
 
-document.querySelectorAll(".action-tile").forEach(tile => {
+document.querySelectorAll(".action-tile, .dash-card, .action-tile-mini").forEach(tile => {
   tile.addEventListener("click", () => {
     const goto = tile.dataset.goto;
     if (tile.dataset.presetmode && goto === "setup-screen") {
