@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Workouts">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="theme-color" content="#121018">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 </head>
 <body>
@@ -82,6 +82,14 @@
         <div class="mode-toggle" data-field="mode" role="tablist" aria-label="Workout mode">
           <button type="button" class="mode-btn selected" data-value="quick" role="tab" aria-selected="true">Quick Workout</button>
           <button type="button" class="mode-btn" data-value="plan" role="tab" aria-selected="false">Multi-Week Plan</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 id="location-label">Where are you training?</h2>
+        <div class="chip-group" data-field="location" role="group" aria-labelledby="location-label">
+          <button type="button" class="chip selected" data-value="home">Home (bodyweight/bands/dumbbells)</button>
+          <button type="button" class="chip" data-value="gym">Gym (barbell/cable/bench too)</button>
         </div>
       </section>
 
@@ -385,6 +393,6 @@
   </nav>
 
 </div>
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
