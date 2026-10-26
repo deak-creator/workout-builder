@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Workouts">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="theme-color" content="#121018">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 </head>
 <body>
@@ -208,7 +208,8 @@
       </div>
     </section>
 
-    <button type="button" id="scan-btn" class="primary-btn">📷 Scan Barcode</button>
+    <button type="button" id="quickadd-btn" class="primary-btn">🔍 Quick Add Ingredient</button>
+    <button type="button" id="scan-btn" class="primary-btn secondary">📷 Scan Barcode</button>
 
     <form id="manual-barcode-form" class="manual-barcode">
       <input type="text" id="manual-barcode-input" inputmode="numeric" placeholder="Or enter barcode number" aria-label="Enter barcode number manually">
@@ -287,11 +288,87 @@
     <button type="button" id="scanner-close-btn" class="primary-btn secondary">Cancel</button>
   </div>
 
+
+  <!-- Quick Add ingredient search & meal builder modal -->
+  <div id="quickadd-modal" class="quickadd-modal" hidden role="dialog" aria-modal="true" aria-label="Quick add ingredients">
+    <div class="quickadd-card">
+
+      <div id="qa-step-search" class="qa-step">
+        <div class="qa-header">
+          <h2>Quick Add</h2>
+          <button type="button" id="qa-close-btn" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+
+        <div class="qa-search-wrap">
+          <span class="qa-search-icon" aria-hidden="true">🔍</span>
+          <input type="text" id="qa-search-input" placeholder="Search Ingredient Name" autocomplete="off">
+        </div>
+        <div id="qa-search-results" class="qa-search-results" hidden></div>
+
+        <h3 class="qa-subheading" id="qa-ingredients-heading">Ingredients (0)</h3>
+        <div id="qa-ingredients-list" class="qa-ingredients-list">
+          <div class="empty-state">Search above and tap a result to add it.</div>
+        </div>
+
+        <div class="qa-total-row" id="qa-total-row" hidden>
+          <span>Total Nutrition</span>
+          <span id="qa-total-text">0 kcal · P 0g · C 0g · F 0g</span>
+        </div>
+
+        <button type="button" id="qa-next-btn" class="primary-btn" disabled>Next</button>
+      </div>
+
+      <div id="qa-step-finalize" class="qa-step" hidden>
+        <div class="qa-header">
+          <button type="button" id="qa-back-btn" class="icon-btn" aria-label="Back">←</button>
+          <h2>Name This Meal</h2>
+          <button type="button" id="qa-close-btn-2" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+
+        <input type="text" id="qa-meal-name" class="qa-meal-name-input" placeholder="Meal name (e.g. Cheese Slices)">
+
+        <h3 class="qa-subheading">Ingredients</h3>
+        <div id="qa-recap-list" class="qa-recap-list"></div>
+
+        <div class="qa-total-row">
+          <span>Total Nutrition</span>
+          <span id="qa-total-text-2">0 kcal · P 0g · C 0g · F 0g</span>
+        </div>
+
+        <h3 class="qa-subheading">How many servings does this meal make?</h3>
+        <div class="qa-servings-stepper">
+          <button type="button" id="qa-servings-minus" class="icon-btn" aria-label="Decrease servings">−</button>
+          <span id="qa-servings-value">1.00</span>
+          <button type="button" id="qa-servings-plus" class="icon-btn" aria-label="Increase servings">+</button>
+        </div>
+        <div class="qa-per-serving" id="qa-per-serving-text"></div>
+
+        <div class="qa-save-actions">
+          <button type="button" id="qa-save-only-btn" class="primary-btn secondary">Save This Meal</button>
+          <button type="button" id="qa-log-save-btn" class="primary-btn">Log and Save This Meal</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- unit picker popup (for ingredient qty units) -->
+  <div id="qa-unit-popup" class="qa-unit-popup" hidden role="dialog" aria-modal="true" aria-label="Choose unit">
+    <div class="qa-unit-popup-card">
+      <h3>Choose a unit</h3>
+      <div id="qa-unit-options" class="qa-unit-options"></div>
+      <button type="button" id="qa-unit-cancel-btn" class="primary-btn secondary">Cancel</button>
+    </div>
+  </div>
+
   <main id="saved-screen" class="screen" aria-label="Saved items">
     <div class="workout-header">
       <h2>Saved</h2>
     </div>
+    <h2 class="section-heading">Workouts & Plans</h2>
     <div id="saved-list"></div>
+    <h2 class="section-heading">Saved Meals</h2>
+    <div id="saved-meals-list"></div>
   </main>
 
   <nav class="tabbar" aria-label="Main navigation">
@@ -302,6 +379,6 @@
   </nav>
 
 </div>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
