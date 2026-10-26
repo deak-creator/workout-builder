@@ -4,7 +4,9 @@ let currentPlan = null;
 let lastParams = null;
 let activeWeekIndex = 0;
 
-const ALL_EQUIPMENT = ["bodyweight", "dumbbells", "bands", "kettlebell", "pullup bar"];
+const ALL_EQUIPMENT = ["bodyweight", "dumbbells", "bands", "kettlebell", "pullup bar", "barbell", "cable machine", "bench"];
+const HOME_EQUIPMENT = ["bodyweight", "dumbbells", "bands", "kettlebell", "pullup bar"];
+const GYM_EQUIPMENT = ALL_EQUIPMENT; // gyms typically have everything, including home-friendly gear
 
 const state = {
   mode: "quick",
@@ -12,7 +14,8 @@ const state = {
   duration: "30",
   difficulty: "beginner",
   weeks: "2",
-  daysPerWeek: "4"
+  daysPerWeek: "4",
+  location: "home"
 };
 
 const DIFF_RANK = { beginner: 1, intermediate: 2, advanced: 3 };
@@ -84,7 +87,7 @@ document.getElementById("setup-form").addEventListener("submit", e => {
     goal: state.goal,
     duration: parseInt(state.duration, 10),
     difficulty: state.difficulty,
-    equipment: new Set(ALL_EQUIPMENT),
+    equipment: new Set(state.location === "gym" ? GYM_EQUIPMENT : HOME_EQUIPMENT),
     muscles: new Set(),
     goalPrompt,
     promptBias
