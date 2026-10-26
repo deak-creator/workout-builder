@@ -372,28 +372,150 @@ function renderBlocksInto(container, blocks, params, onChange) {
     h.className = "card";
     h.innerHTML = `<h2>${block.section}</h2>`;
     block.items.forEach((ex, idx) => {
+      const wrap = document.createElement("div");
+      wrap.className = "exercise-card-wrap";
+
       const row = document.createElement("div");
-      row.className = "exercise-card";
+      row.className = "exercise-card" + (exerciseIsLogged(ex) ? " logged" : "");
       row.innerHTML = `
-        <div class="num">${counter++}</div>
+        <div class="num">${ex._done ? "✓" : counter}</div>
         <div class="info">
           <div class="name">${ex.name}</div>
           <div class="meta">${ex.muscles.join(", ")} · ${ex.equipment}</div>
+          ${exerciseIsLogged(ex) ? `<div class="log-badge">${exerciseSetSummary(ex)}</div>` : ""}
         </div>
         <div class="dur">${ex.durationLabel}</div>
-        <button class="swap-btn" title="Swap exercise">⇄</button>
+        <button type="button" class="swap-btn" title="Swap exercise">⇄</button>
       `;
-      row.querySelector(".swap-btn").addEventListener("click", () => {
+      counter++;
+      row.querySelector(".swap-btn").addEventListener("click", e => {
+        e.stopPropagation();
         const excludeNames = new Set(block.items.map(i => i.name));
         const alt = findSwapCandidate(ex, equipmentSet, maxDiff, excludeNames);
         if (!alt) return;
         block.items[idx] = { ...alt, durationLabel: formatSetLabel(alt, ex._seconds || 30), _seconds: ex._seconds, _role: ex._role, _focus: ex._focus };
         onChange();
       });
-      h.appendChild(row);
+
+      const panel = document.createElement("div");
+      panel.className = "exercise-log-panel";
+      panel.hidden = true;
+
+      row.addEventListener("click", () => {
+        const isOpen = !panel.hidden;
+        wrap.querySelectorAll(".exercise-log-panel").forEach(p => { if (p !== panel) p.hidden = true; });
+        if (isOpen) {
+          panel.hidden = true;
+        } else {
+          panel.innerHTML = "";
+          panel.appendChild(buildLogPanel(ex, () => { onChange(); }));
+          panel.hidden = false;
+        }
+      });
+
+      wrap.appendChild(row);
+      wrap.appendChild(panel);
+      h.appendChild(wrap);
     });
     container.appendChild(h);
   });
+}
+
+// ---------- per-exercise set logging ----------
+function exerciseIsLogged(ex) {
+  return !!(ex._log && ex._log.sets && ex._log.sets.some(s => s.done));
+}
+function exerciseSetSummary(ex) {
+  const done = ex._log.sets.filter(s => s.done).length;
+  return `${done}/${ex._log.sets.length} sets logged`;
+}
+function defaultLog() {
+  return { sets: [{ reps: "", weight: "", done: false }, { reps: "", weight: "", done: false }, { reps: "", weight: "", done: false }], note: "", restSeconds: 90 };
+}
+
+function buildLogPanel(ex, onSave) {
+  const log = ex._log ? JSON.parse(JSON.stringify(ex._log)) : defaultLog();
+
+  const panel = document.createElement("div");
+  panel.innerHTML = `
+    <div class="rest-banner">
+      <div class="rest-text"><strong id="rest-time-display">Rest for ${Math.round(log.restSeconds / 60) || 1} min</strong><span>Rest between each set</span></div>
+      <button type="button" class="rest-play-btn" aria-label="Start rest timer">▶</button>
+    </div>
+    <div class="set-grid">
+      <div class="set-grid-header"><span></span><span>Reps</span><span>Weight (kg)</span><span></span></div>
+      <div class="set-rows"></div>
+    </div>
+    <button type="button" class="add-set-btn">+ Add set</button>
+    <textarea class="note-input" placeholder="Add your note here…">${log.note || ""}</textarea>
+    <div class="log-actions">
+      <button type="button" class="primary-btn log-save-btn">Save Changes</button>
+      <button type="button" class="primary-btn secondary log-cancel-btn">Cancel</button>
+    </div>
+  `;
+
+  const rowsEl = panel.querySelector(".set-rows");
+  function renderSetRows() {
+    rowsEl.innerHTML = "";
+    log.sets.forEach((s, i) => {
+      const r = document.createElement("div");
+      r.className = "set-row";
+      r.innerHTML = `
+        <span class="set-num">${i + 1}</span>
+        <input type="number" inputmode="numeric" class="set-reps" placeholder="0" value="${s.reps}">
+        <input type="number" inputmode="decimal" class="set-weight" placeholder="0" value="${s.weight}">
+        <button type="button" class="set-check${s.done ? " done" : ""}" aria-label="Mark set ${i + 1} complete">✓</button>
+      `;
+      r.querySelector(".set-reps").addEventListener("input", e => { s.reps = e.target.value; });
+      r.querySelector(".set-weight").addEventListener("input", e => { s.weight = e.target.value; });
+      r.querySelector(".set-check").addEventListener("click", () => {
+        s.done = !s.done;
+        renderSetRows();
+      });
+      rowsEl.appendChild(r);
+    });
+  }
+  renderSetRows();
+
+  panel.querySelector(".add-set-btn").addEventListener("click", () => {
+    log.sets.push({ reps: "", weight: "", done: false });
+    renderSetRows();
+  });
+
+  let restInterval = null;
+  panel.querySelector(".rest-play-btn").addEventListener("click", e => {
+    const btn = e.currentTarget;
+    const display = panel.querySelector("#rest-time-display");
+    if (restInterval) { clearInterval(restInterval); restInterval = null; }
+    let remaining = log.restSeconds;
+    btn.disabled = true;
+    restInterval = setInterval(() => {
+      remaining -= 1;
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      display.textContent = `Rest: ${m}:${String(s).padStart(2, "0")}`;
+      if (remaining <= 0) {
+        clearInterval(restInterval);
+        restInterval = null;
+        display.textContent = `Rest for ${Math.round(log.restSeconds / 60) || 1} min`;
+        btn.disabled = false;
+      }
+    }, 1000);
+  });
+
+  panel.querySelector(".log-save-btn").addEventListener("click", () => {
+    log.note = panel.querySelector(".note-input").value;
+    ex._log = log;
+    ex._done = log.sets.some(s => s.done);
+    if (restInterval) clearInterval(restInterval);
+    onSave();
+  });
+  panel.querySelector(".log-cancel-btn").addEventListener("click", () => {
+    if (restInterval) clearInterval(restInterval);
+    onSave();
+  });
+
+  return panel;
 }
 
 // ---------- save quick workout ----------
@@ -446,11 +568,14 @@ function renderPlan(plan) {
       dayListEl.appendChild(card);
       return;
     }
+    const allExercises = day.blocks.flatMap(b => b.items);
+    const anyLogged = allExercises.some(ex => exerciseIsLogged(ex));
+    const allLogged = allExercises.length > 0 && allExercises.every(ex => exerciseIsLogged(ex));
     card.className = "day-card";
     card.innerHTML = `
       <div class="day-header">
-        <span class="day-name">${dayNames[dayIdx]}</span>
-        <span class="day-focus">${day.focus} · ${day.duration} min</span>
+        <span class="day-name">${allLogged ? '<span class="day-check">✓</span> ' : ""}${dayNames[dayIdx]}</span>
+        <span class="day-focus">${day.focus} · ${day.duration} min${anyLogged && !allLogged ? " · In progress" : ""}</span>
       </div>
       <div class="day-exercises"></div>
     `;
@@ -542,6 +667,7 @@ function updateHomeStats() {
   const savedWorkouts = JSON.parse(localStorage.getItem("savedWorkouts") || "[]");
   const todayLog = getFoodLogFor(todayKey());
   const totals = sumNutrients(todayLog);
+  const targets = getNutritionTargets();
   const calEl = document.getElementById("stat-calories");
   const woEl = document.getElementById("stat-workouts");
   if (calEl) calEl.textContent = Math.round(totals.calories);
@@ -553,6 +679,24 @@ function updateHomeStats() {
     const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     greetingEl.textContent = greeting;
   }
+
+  const calSubEl = document.getElementById("home-cal-sub");
+  if (calSubEl) calSubEl.textContent = `${Math.round(totals.calories)} / ${targets.calories} kcal today`;
+  const savedSubEl = document.getElementById("home-saved-sub");
+  if (savedSubEl) savedSubEl.textContent = `${savedWorkouts.length} workout${savedWorkouts.length === 1 ? "" : "s"} saved`;
+
+  setMiniRing("protein", totals.protein, targets.protein);
+  setMiniRing("carbs", totals.carbs, targets.carbs);
+  setMiniRing("fat", totals.fat, targets.fat);
+}
+
+function setMiniRing(key, value, target) {
+  const ring = document.getElementById(`home-ring-${key}`);
+  const text = document.getElementById(`home-ring-${key}-text`);
+  if (!ring) return;
+  const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0;
+  ring.style.setProperty("--pct", pct);
+  if (text) text.textContent = `${Math.round(value)}g`;
 }
 
 document.querySelectorAll(".action-tile").forEach(tile => {
@@ -761,14 +905,15 @@ function renderFoodLog() {
   const badgeEl = document.getElementById("goal-type-badge");
   if (badgeEl) badgeEl.textContent = goalLabels[targets.goalType] || "Maintain";
 
-  function setMacroBar(key, value, target) {
+  function setMacroRing(key, value, target) {
     const pctVal = target > 0 ? Math.min(100, (value / target) * 100) : 0;
-    document.getElementById(`${key}-fill`).style.width = pctVal + "%";
-    document.getElementById(`n-${key}-text`).textContent = `${Math.round(value)} / ${target}g`;
+    const ringEl = document.getElementById(`ring-${key}`);
+    if (ringEl) ringEl.style.setProperty("--pct", pctVal);
+    document.getElementById(`n-${key}-text`).textContent = `${Math.round(value)}/${target}g`;
   }
-  setMacroBar("protein", totals.protein, targets.protein);
-  setMacroBar("carbs", totals.carbs, targets.carbs);
-  setMacroBar("fat", totals.fat, targets.fat);
+  setMacroRing("protein", totals.protein, targets.protein);
+  setMacroRing("carbs", totals.carbs, targets.carbs);
+  setMacroRing("fat", totals.fat, targets.fat);
 
   const isToday = activeFoodDate === todayKey();
   const dateLabel = isToday ? "Today" : new Date(activeFoodDate + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
