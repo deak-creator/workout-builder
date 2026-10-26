@@ -78,12 +78,16 @@ document.getElementById("regen-btn").addEventListener("click", () => {
 // ---------- form submit ----------
 document.getElementById("setup-form").addEventListener("submit", e => {
   e.preventDefault();
+  const goalPrompt = (document.getElementById("goal-prompt-input").value || "").trim();
+  const promptBias = parseGoalPrompt(goalPrompt);
   const params = {
     goal: state.goal,
     duration: parseInt(state.duration, 10),
     difficulty: state.difficulty,
     equipment: new Set(ALL_EQUIPMENT),
-    muscles: new Set()
+    muscles: new Set(),
+    goalPrompt,
+    promptBias
   };
 
   if (state.mode === "plan") {
@@ -105,6 +109,18 @@ document.getElementById("setup-form").addEventListener("submit", e => {
   }
 });
 
+// live hint under the free-text prompt so it's clear the text is actually read
+document.getElementById("goal-prompt-input").addEventListener("input", e => {
+  const bias = parseGoalPrompt(e.target.value);
+  const hintEl = document.getElementById("goal-prompt-hint");
+  const parts = [];
+  if (bias.repStyle === "hypertrophy") parts.push("Biasing toward lean-muscle rep ranges (8-15 reps) and more strength days");
+  else if (bias.repStyle === "strength") parts.push("Biasing toward heavy strength rep ranges (4-8 reps) and more strength days");
+  if (bias.lessCardio) parts.push("Reducing cardio days");
+  if (bias.muscleFocus.length) parts.push(`Prioritising: ${bias.muscleFocus.join(", ")}`);
+  hintEl.textContent = parts.join(" · ");
+});
+
 // ============================================================
 // DAY-TYPE ROTATION — each day in a plan is a different kind of workout
 // (Strength / Cardio / Fat Loss / Mobility), never a muscle-group split.
@@ -120,18 +136,106 @@ const DAY_TYPE_LABELS = {
 // plan gets a healthy mix no matter how many days per week is picked.
 const ROTATION_ORDER = ["strength", "cardio", "fatloss", "strength", "mobility", "cardio", "strength"];
 
-function getSplitTemplate(daysPerWeek) {
+// ---------- free-text goal prompt parsing ----------
+// Reads the "Anything specific you want to achieve?" box and turns it into a
+// rotation bias + rep-range style so a request like "build lean muscle, less
+// cardio, focus on back" actually changes what gets generated, not just the
+// workout-type label.
+const GOAL_PROMPT_KEYWORDS = {
+  muscle: ["muscle", "lean", "bulk", "hypertroph", "tone", "build", "gain", "size", "bigger"],
+  strength: ["strength", "strong", "powerlift", "heavy", "1rm", "max"],
+  lessCardio: ["less cardio", "no cardio", "less running", "minimal cardio", "avoid cardio"],
+  cardio: ["cardio", "endurance", "run", "stamina", "conditioning"],
+  fatloss: ["fat loss", "lose weight", "lean out", "cut", "shred", "slim"],
+  mobility: ["mobility", "flexib", "stretch", "yoga"]
+};
+const MUSCLE_KEYWORDS = {
+  back: ["back", "lats", "pull"],
+  chest: ["chest", "pecs", "push"],
+  shoulders: ["shoulders", "delts"],
+  arms: ["arms", "biceps", "triceps"],
+  legs: ["legs", "quads", "hamstrings", "glutes", "lower body"],
+  core: ["core", "abs", "six pack"],
+  "upper body": ["upper body"]
+};
+
+function parseGoalPrompt(text) {
+  const result = { typeBias: { strength: 0, cardio: 0, fatloss: 0, mobility: 0 }, muscleFocus: [], repStyle: null, lessCardio: false };
+  if (!text) return result;
+  const t = text.toLowerCase();
+
+  if (GOAL_PROMPT_KEYWORDS.muscle.some(k => t.includes(k))) {
+    result.typeBias.strength += 3;
+    result.repStyle = "hypertrophy";
+  }
+  if (GOAL_PROMPT_KEYWORDS.strength.some(k => t.includes(k))) {
+    result.typeBias.strength += 3;
+    if (!result.repStyle) result.repStyle = "strength";
+  }
+  if (GOAL_PROMPT_KEYWORDS.cardio.some(k => t.includes(k))) {
+    result.typeBias.cardio += 2;
+  }
+  if (GOAL_PROMPT_KEYWORDS.fatloss.some(k => t.includes(k))) {
+    result.typeBias.fatloss += 2;
+  }
+  if (GOAL_PROMPT_KEYWORDS.mobility.some(k => t.includes(k))) {
+    result.typeBias.mobility += 2;
+  }
+  if (GOAL_PROMPT_KEYWORDS.lessCardio.some(k => t.includes(k))) {
+    result.lessCardio = true;
+    result.typeBias.cardio -= 3;
+    result.typeBias.fatloss -= 1;
+  }
+  Object.entries(MUSCLE_KEYWORDS).forEach(([muscle, keys]) => {
+    if (keys.some(k => t.includes(k))) result.muscleFocus.push(muscle);
+  });
+  return result;
+}
+
+// Build a rotation of day types weighted by the prompt's bias — e.g. a strong
+// "build muscle" signal yields more strength days and fewer/no cardio days,
+// instead of always forcing the fixed strength/cardio/fatloss/mobility cycle.
+function buildBiasedRotation(daysPerWeek, promptBias) {
+  const baseWeights = { strength: 3, cardio: 2, fatloss: 2, mobility: 1 };
+  const weights = { ...baseWeights };
+  Object.keys(weights).forEach(k => {
+    weights[k] = Math.max(0.2, weights[k] + (promptBias.typeBias[k] || 0));
+  });
+  const types = Object.keys(weights);
+  const totalWeight = types.reduce((s, k) => s + weights[k], 0);
+  // deterministic-ish round-robin weighted pick so the same prompt gives a
+  // consistent, well-distributed rotation rather than pure randomness
+  const counts = {};
+  types.forEach(k => { counts[k] = 0; });
+  const order = [];
+  for (let i = 0; i < daysPerWeek; i++) {
+    let best = types[0];
+    let bestScore = -Infinity;
+    types.forEach(k => {
+      if (weights[k] <= 0) return;
+      const score = weights[k] / totalWeight - counts[k] / (i + 1);
+      if (score > bestScore) { bestScore = score; best = k; }
+    });
+    order.push(best);
+    counts[best]++;
+  }
+  return order;
+}
+
+function getSplitTemplate(daysPerWeek, promptBias) {
+  const bias = promptBias || parseGoalPrompt("");
+  const hasBias = Object.values(bias.typeBias).some(v => v !== 0);
+
   if (daysPerWeek >= 7) {
     // 7 days: six varied sessions + one rest/recovery day
-    return [
-      { label: DAY_TYPE_LABELS.strength, dayGoal: "strength" },
-      { label: DAY_TYPE_LABELS.cardio, dayGoal: "cardio" },
-      { label: DAY_TYPE_LABELS.fatloss, dayGoal: "fatloss" },
-      { label: DAY_TYPE_LABELS.strength, dayGoal: "strength" },
-      { label: DAY_TYPE_LABELS.mobility, dayGoal: "mobility" },
-      { label: DAY_TYPE_LABELS.cardio, dayGoal: "cardio" },
-      { label: "Recovery", dayGoal: "mobility", isRest: true }
-    ];
+    const order = hasBias ? buildBiasedRotation(6, bias) : ["strength", "cardio", "fatloss", "strength", "mobility", "cardio"];
+    const days = order.map(dayGoal => ({ label: DAY_TYPE_LABELS[dayGoal], dayGoal }));
+    days.push({ label: "Recovery", dayGoal: "mobility", isRest: true });
+    return days;
+  }
+  if (hasBias) {
+    const order = buildBiasedRotation(daysPerWeek, bias);
+    return order.map(dayGoal => ({ label: DAY_TYPE_LABELS[dayGoal], dayGoal }));
   }
   const days = [];
   for (let i = 0; i < daysPerWeek; i++) {
@@ -141,14 +245,22 @@ function getSplitTemplate(daysPerWeek) {
   return days;
 }
 
-function goalTypeWeights(goal) {
+function goalTypeWeights(goal, promptBias) {
+  let weights;
   switch (goal) {
-    case "strength": return { strength: 5, core: 1, cardio: 0, mobility: 1 };
-    case "cardio": return { cardio: 5, strength: 1, core: 1, mobility: 0 };
-    case "fatloss": return { cardio: 4, strength: 2, core: 2, mobility: 0 };
-    case "mobility": return { mobility: 5, core: 1, strength: 0, cardio: 0 };
-    default: return { strength: 2, cardio: 2, core: 2, mobility: 1 };
+    case "strength": weights = { strength: 5, core: 1, cardio: 0, mobility: 1 }; break;
+    case "cardio": weights = { cardio: 5, strength: 1, core: 1, mobility: 0 }; break;
+    case "fatloss": weights = { cardio: 4, strength: 2, core: 2, mobility: 0 }; break;
+    case "mobility": weights = { mobility: 5, core: 1, strength: 0, cardio: 0 }; break;
+    default: weights = { strength: 2, cardio: 2, core: 2, mobility: 1 };
   }
+  if (promptBias) {
+    weights = { ...weights };
+    weights.strength = Math.max(0, weights.strength + (promptBias.typeBias.strength || 0) * 0.6);
+    weights.cardio = Math.max(0, weights.cardio + (promptBias.typeBias.cardio || 0) * 0.6);
+    if (promptBias.lessCardio) weights.cardio = Math.max(0, weights.cardio - 2);
+  }
+  return weights;
 }
 
 function pickUnique(arr, n) {
@@ -163,8 +275,16 @@ function pickUnique(arr, n) {
   return out;
 }
 
-function formatSetLabel(ex, seconds) {
+function formatSetLabel(ex, seconds, repStyle) {
   if (ex.type === "strength") {
+    if (repStyle === "strength") {
+      // lower reps, implies heavier load for pure-strength focused prompts
+      return seconds <= 30 ? "4-6 reps" : seconds <= 45 ? "5-8 reps" : "6-10 reps";
+    }
+    if (repStyle === "hypertrophy") {
+      // classic muscle-building rep range
+      return seconds <= 30 ? "8-10 reps" : seconds <= 45 ? "10-12 reps" : "12-15 reps";
+    }
     const reps = seconds <= 30 ? "10-12 reps" : seconds <= 45 ? "12-15 reps" : "15-20 reps";
     return reps;
   }
@@ -177,6 +297,7 @@ function formatSetLabel(ex, seconds) {
 function generateWorkout(params, dayFocus) {
   const { goal, duration, difficulty, equipment } = params;
   const maxDiff = DIFF_RANK[difficulty];
+  const promptBias = params.promptBias || parseGoalPrompt(params.goalPrompt || "");
 
   let pool = EXERCISES.filter(ex =>
     equipment.has(ex.equipment) && DIFF_RANK[ex.difficulty] <= maxDiff
@@ -187,10 +308,16 @@ function generateWorkout(params, dayFocus) {
   // never a muscle-group split — so dayFocus.dayGoal overrides the overall plan goal for the day.
   const effectiveGoal = dayFocus ? dayFocus.dayGoal : goal;
 
-  const typeWeights = goalTypeWeights(effectiveGoal);
+  const typeWeights = goalTypeWeights(effectiveGoal, promptBias);
 
   function score(ex) {
     let s = typeWeights[ex.type] ?? 1;
+    // nudge exercises toward any specific muscle groups called out in the prompt
+    // (e.g. "focus on back" boosts back/pull exercises without filtering everything else out)
+    if (promptBias.muscleFocus.length && ex.muscles) {
+      const hit = ex.muscles.some(m => promptBias.muscleFocus.some(f => m.includes(f) || f.includes(m)));
+      if (hit) s += 2.5;
+    }
     s += Math.random() * 2;
     return s;
   }
@@ -232,12 +359,12 @@ function generateWorkout(params, dayFocus) {
   if (rounds > 1 && effectiveGoal !== "mobility") {
     blocks.push({
       section: `Main (${rounds} rounds)`,
-      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds), _seconds: perExerciseSeconds, _role: "main", _focus: null }))
+      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds, promptBias.repStyle), _seconds: perExerciseSeconds, _role: "main", _focus: null }))
     });
   } else {
     blocks.push({
       section: effectiveGoal === "mobility" ? "Routine" : "Main",
-      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds), _seconds: perExerciseSeconds, _role: "main", _focus: null }))
+      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds, promptBias.repStyle), _seconds: perExerciseSeconds, _role: "main", _focus: null }))
     });
   }
 
@@ -263,7 +390,8 @@ function generateWorkout(params, dayFocus) {
 // ============================================================
 function generatePlan(params) {
   const { weeks, daysPerWeek } = params;
-  const template = getSplitTemplate(daysPerWeek);
+  const promptBias = params.promptBias || parseGoalPrompt(params.goalPrompt || "");
+  const template = getSplitTemplate(daysPerWeek, promptBias);
 
   const planWeeks = [];
   for (let w = 0; w < weeks; w++) {
@@ -274,7 +402,7 @@ function generatePlan(params) {
         return { focus: dayFocus.label, isRest: true, blocks: [] };
       }
       const dayDuration = Math.min(90, Math.round(params.duration * progressFactor));
-      const dayParams = { ...params, duration: dayDuration };
+      const dayParams = { ...params, duration: dayDuration, promptBias };
       const workout = generateWorkout(dayParams, dayFocus);
       return { focus: dayFocus.label, isRest: false, blocks: workout.blocks, duration: dayDuration };
     });
@@ -285,6 +413,7 @@ function generatePlan(params) {
     goal: params.goal,
     difficulty: params.difficulty,
     equipment: [...params.equipment],
+    goalPrompt: params.goalPrompt || "",
     weeksCount: weeks,
     daysPerWeek,
     createdAt: new Date().toISOString(),
