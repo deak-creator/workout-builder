@@ -1191,3 +1191,24 @@ html, body { background: radial-gradient(ellipse at top, #1a1526 0%, #0e0c14 60%
 }
 .qa-unit-option:active, .qa-unit-option.selected { background: #211c2e; }
 .qa-unit-popup-card .primary-btn { width: 100%; margin: 0; }
+
+/* goal prompt free-text field */
+.goal-prompt-input {
+  width: 100%;
+  background: #16131e;
+  border: 1px solid #2d2640;
+  color: #e4e1ec;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: inherit;
+}
+.goal-prompt-input::placeholder { color: #6b6281; }
+.goal-prompt-hint {
+  font-size: 12px;
+  color: #a79bc4;
+  margin: 8px 0 0;
+  min-height: 1px;
+}
