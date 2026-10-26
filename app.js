@@ -4,15 +4,15 @@ let currentPlan = null;
 let lastParams = null;
 let activeWeekIndex = 0;
 
+const ALL_EQUIPMENT = ["bodyweight", "dumbbells", "bands", "kettlebell", "pullup bar"];
+
 const state = {
   mode: "quick",
   goal: "general",
   duration: "30",
   difficulty: "beginner",
   weeks: "2",
-  daysPerWeek: "4",
-  equipment: new Set(["bodyweight"]),
-  muscles: new Set()
+  daysPerWeek: "4"
 };
 
 const DIFF_RANK = { beginner: 1, intermediate: 2, advanced: 3 };
@@ -53,6 +53,7 @@ document.querySelector(".mode-toggle").addEventListener("click", e => {
   btn.classList.add("selected");
   state.mode = btn.dataset.value;
   document.querySelectorAll(".plan-only").forEach(el => el.hidden = state.mode !== "plan");
+  document.querySelectorAll(".quick-only").forEach(el => el.hidden = state.mode === "plan");
   document.getElementById("duration-label").textContent = state.mode === "plan" ? "Minutes per day" : "Duration";
   document.getElementById("generate-btn").textContent = state.mode === "plan" ? "Generate Plan" : "Generate Workout";
 });
@@ -81,8 +82,8 @@ document.getElementById("setup-form").addEventListener("submit", e => {
     goal: state.goal,
     duration: parseInt(state.duration, 10),
     difficulty: state.difficulty,
-    equipment: new Set(state.equipment.size ? state.equipment : ["bodyweight"]),
-    muscles: new Set(state.muscles)
+    equipment: new Set(ALL_EQUIPMENT),
+    muscles: new Set()
   };
 
   if (state.mode === "plan") {
@@ -105,63 +106,39 @@ document.getElementById("setup-form").addEventListener("submit", e => {
 });
 
 // ============================================================
-// SPLIT TEMPLATES — how training days are organized across a week
+// DAY-TYPE ROTATION — each day in a plan is a different kind of workout
+// (Strength / Cardio / Fat Loss / Mobility), never a muscle-group split.
 // ============================================================
-const MUSCLE_GROUPS = {
-  Upper: ["chest", "back", "shoulders", "biceps", "triceps"],
-  Lower: ["quads", "glutes", "hamstrings"],
-  Push: ["chest", "shoulders", "triceps"],
-  Pull: ["back", "biceps"],
-  Legs: ["quads", "glutes", "hamstrings"],
-  "Full Body": null, // no restriction
-  "Core & Mobility": ["core", "obliques", "lower back", "spine", "hips"],
-  Recovery: null
+const DAY_TYPE_LABELS = {
+  strength: "Strength",
+  cardio: "Cardio",
+  fatloss: "Fat Loss",
+  mobility: "Mobility"
 };
 
+// Rotation order chosen so strength days aren't back-to-back and every
+// plan gets a healthy mix no matter how many days per week is picked.
+const ROTATION_ORDER = ["strength", "cardio", "fatloss", "strength", "mobility", "cardio", "strength"];
+
 function getSplitTemplate(daysPerWeek) {
-  switch (daysPerWeek) {
-    case 1: return [{ label: "Full Body", muscles: null }];
-    case 2: return [
-      { label: "Upper", muscles: MUSCLE_GROUPS.Upper },
-      { label: "Lower", muscles: MUSCLE_GROUPS.Lower }
+  if (daysPerWeek >= 7) {
+    // 7 days: six varied sessions + one rest/recovery day
+    return [
+      { label: DAY_TYPE_LABELS.strength, dayGoal: "strength" },
+      { label: DAY_TYPE_LABELS.cardio, dayGoal: "cardio" },
+      { label: DAY_TYPE_LABELS.fatloss, dayGoal: "fatloss" },
+      { label: DAY_TYPE_LABELS.strength, dayGoal: "strength" },
+      { label: DAY_TYPE_LABELS.mobility, dayGoal: "mobility" },
+      { label: DAY_TYPE_LABELS.cardio, dayGoal: "cardio" },
+      { label: "Recovery", dayGoal: "mobility", isRest: true }
     ];
-    case 3: return [
-      { label: "Push", muscles: MUSCLE_GROUPS.Push },
-      { label: "Pull", muscles: MUSCLE_GROUPS.Pull },
-      { label: "Legs", muscles: MUSCLE_GROUPS.Legs }
-    ];
-    case 4: return [
-      { label: "Upper", muscles: MUSCLE_GROUPS.Upper },
-      { label: "Lower", muscles: MUSCLE_GROUPS.Lower },
-      { label: "Upper", muscles: MUSCLE_GROUPS.Upper },
-      { label: "Lower", muscles: MUSCLE_GROUPS.Lower }
-    ];
-    case 5: return [
-      { label: "Push", muscles: MUSCLE_GROUPS.Push },
-      { label: "Pull", muscles: MUSCLE_GROUPS.Pull },
-      { label: "Legs", muscles: MUSCLE_GROUPS.Legs },
-      { label: "Upper", muscles: MUSCLE_GROUPS.Upper },
-      { label: "Lower", muscles: MUSCLE_GROUPS.Lower }
-    ];
-    case 6: return [
-      { label: "Push", muscles: MUSCLE_GROUPS.Push },
-      { label: "Pull", muscles: MUSCLE_GROUPS.Pull },
-      { label: "Legs", muscles: MUSCLE_GROUPS.Legs },
-      { label: "Push", muscles: MUSCLE_GROUPS.Push },
-      { label: "Pull", muscles: MUSCLE_GROUPS.Pull },
-      { label: "Legs", muscles: MUSCLE_GROUPS.Legs }
-    ];
-    case 7: return [
-      { label: "Push", muscles: MUSCLE_GROUPS.Push },
-      { label: "Pull", muscles: MUSCLE_GROUPS.Pull },
-      { label: "Legs", muscles: MUSCLE_GROUPS.Legs },
-      { label: "Upper", muscles: MUSCLE_GROUPS.Upper },
-      { label: "Lower", muscles: MUSCLE_GROUPS.Lower },
-      { label: "Core & Mobility", muscles: MUSCLE_GROUPS["Core & Mobility"] },
-      { label: "Recovery", muscles: null, isRest: true }
-    ];
-    default: return [{ label: "Full Body", muscles: null }];
   }
+  const days = [];
+  for (let i = 0; i < daysPerWeek; i++) {
+    const dayGoal = ROTATION_ORDER[i % ROTATION_ORDER.length];
+    days.push({ label: DAY_TYPE_LABELS[dayGoal], dayGoal });
+  }
+  return days;
 }
 
 function goalTypeWeights(goal) {
@@ -198,7 +175,7 @@ function formatSetLabel(ex, seconds) {
 // SINGLE-DAY WORKOUT GENERATOR (used by Quick Workout + each plan day)
 // ============================================================
 function generateWorkout(params, dayFocus) {
-  const { goal, duration, difficulty, equipment, muscles } = params;
+  const { goal, duration, difficulty, equipment } = params;
   const maxDiff = DIFF_RANK[difficulty];
 
   let pool = EXERCISES.filter(ex =>
@@ -206,23 +183,14 @@ function generateWorkout(params, dayFocus) {
   );
   if (pool.length === 0) pool = EXERCISES.filter(ex => equipment.has(ex.equipment));
 
-  // apply split-day muscle restriction if provided
-  const effectiveGoal = (dayFocus && dayFocus.label === "Recovery") ? "mobility" : goal;
-  const focusMuscles = dayFocus ? dayFocus.muscles : null;
-  if (focusMuscles) {
-    const restricted = pool.filter(ex => ex.muscles.some(m => focusMuscles.includes(m)));
-    if (restricted.length >= 3) pool = restricted;
-  }
+  // Each day in a plan is a different *workout type* (strength/cardio/fat loss/mobility) —
+  // never a muscle-group split — so dayFocus.dayGoal overrides the overall plan goal for the day.
+  const effectiveGoal = dayFocus ? dayFocus.dayGoal : goal;
 
   const typeWeights = goalTypeWeights(effectiveGoal);
-  const targetMuscles = focusMuscles ? new Set(focusMuscles) : muscles;
 
   function score(ex) {
     let s = typeWeights[ex.type] ?? 1;
-    if (targetMuscles && targetMuscles.size) {
-      const hit = ex.muscles.some(m => targetMuscles.has ? targetMuscles.has(m) : targetMuscles.includes(m));
-      s += hit ? 4 : 0;
-    }
     s += Math.random() * 2;
     return s;
   }
@@ -257,19 +225,19 @@ function generateWorkout(params, dayFocus) {
   if (warmupPicks.length && effectiveGoal !== "mobility") {
     blocks.push({
       section: "Warm-up",
-      items: warmupPicks.map(ex => ({ ...ex, durationLabel: `${Math.max(20, Math.round(warmupTime * 60 / warmupPicks.length))}s`, _seconds: Math.max(20, Math.round(warmupTime * 60 / warmupPicks.length)), _role: "warmup", _focus: focusMuscles }))
+      items: warmupPicks.map(ex => ({ ...ex, durationLabel: `${Math.max(20, Math.round(warmupTime * 60 / warmupPicks.length))}s`, _seconds: Math.max(20, Math.round(warmupTime * 60 / warmupPicks.length)), _role: "warmup", _focus: null }))
     });
   }
 
   if (rounds > 1 && effectiveGoal !== "mobility") {
     blocks.push({
       section: `Main (${rounds} rounds)`,
-      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds), _seconds: perExerciseSeconds, _role: "main", _focus: focusMuscles }))
+      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds), _seconds: perExerciseSeconds, _role: "main", _focus: null }))
     });
   } else {
     blocks.push({
       section: effectiveGoal === "mobility" ? "Routine" : "Main",
-      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds), _seconds: perExerciseSeconds, _role: "main", _focus: focusMuscles }))
+      items: mainExercises.map(ex => ({ ...ex, durationLabel: formatSetLabel(ex, perExerciseSeconds), _seconds: perExerciseSeconds, _role: "main", _focus: null }))
     });
   }
 
@@ -277,12 +245,12 @@ function generateWorkout(params, dayFocus) {
   if (cooldownPicks.length) {
     blocks.push({
       section: "Cool-down",
-      items: cooldownPicks.map(ex => ({ ...ex, durationLabel: `${Math.max(20, Math.round(cooldownTime * 60 / cooldownPicks.length))}s`, _seconds: Math.max(20, Math.round(cooldownTime * 60 / cooldownPicks.length)), _role: "cooldown", _focus: focusMuscles }))
+      items: cooldownPicks.map(ex => ({ ...ex, durationLabel: `${Math.max(20, Math.round(cooldownTime * 60 / cooldownPicks.length))}s`, _seconds: Math.max(20, Math.round(cooldownTime * 60 / cooldownPicks.length)), _role: "cooldown", _focus: null }))
     });
   }
 
   return {
-    goal, duration, difficulty,
+    goal: effectiveGoal, duration, difficulty,
     equipment: [...equipment],
     createdAt: new Date().toISOString(),
     dayLabel: dayFocus ? dayFocus.label : null,
@@ -721,6 +689,7 @@ document.querySelectorAll(".action-tile, .dash-card, .action-tile-mini").forEach
       });
       state.mode = target;
       document.querySelectorAll(".plan-only").forEach(el => el.hidden = state.mode !== "plan");
+  document.querySelectorAll(".quick-only").forEach(el => el.hidden = state.mode === "plan");
       document.getElementById("duration-label").textContent = state.mode === "plan" ? "Minutes per day" : "Duration";
       document.getElementById("generate-btn").textContent = state.mode === "plan" ? "Generate Plan" : "Generate Workout";
     }
