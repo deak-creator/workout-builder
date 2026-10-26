@@ -180,12 +180,24 @@
   <main id="nutrition-screen" class="screen" aria-label="Nutrition">
     <div class="workout-header">
       <h2>Nutrition</h2>
+      <button type="button" id="cal-goal-btn" class="icon-btn" aria-label="Set calorie goal">⚙</button>
     </div>
 
-    <section class="card stats-card" aria-label="Today's food log totals">
-      <h2>Today's Totals</h2>
-      <div class="stats-row four">
-        <div class="stat"><div class="stat-value" id="n-cal">0</div><div class="stat-label">kcal</div></div>
+    <div id="date-strip" class="date-strip" role="tablist" aria-label="Select day"></div>
+
+    <section class="card stats-card" aria-label="Day's food log totals">
+      <h2 id="day-totals-heading">Totals</h2>
+
+      <div class="cal-progress-wrap">
+        <div class="cal-progress-track">
+          <div id="cal-progress-fill" class="cal-progress-fill"></div>
+        </div>
+        <div class="cal-progress-text">
+          <span id="n-cal">0</span> / <span id="n-cal-goal">2000</span> kcal
+        </div>
+      </div>
+
+      <div class="stats-row three">
         <div class="stat"><div class="stat-value" id="n-protein">0</div><div class="stat-label">protein g</div></div>
         <div class="stat"><div class="stat-value" id="n-carbs">0</div><div class="stat-label">carbs g</div></div>
         <div class="stat"><div class="stat-value" id="n-fat">0</div><div class="stat-label">fat g</div></div>
@@ -201,9 +213,21 @@
 
     <div id="scan-result"></div>
 
-    <h2 class="section-heading">Logged Today</h2>
+    <h2 class="section-heading" id="food-log-heading">Logged</h2>
     <div id="food-log-list"></div>
   </main>
+
+  <!-- calorie goal modal -->
+  <div id="goal-modal" class="goal-modal" hidden role="dialog" aria-modal="true" aria-label="Set daily calorie goal">
+    <div class="goal-modal-card">
+      <h2>Daily Calorie Goal</h2>
+      <input type="number" id="goal-input" inputmode="numeric" placeholder="2000">
+      <div class="goal-modal-actions">
+        <button type="button" id="goal-cancel-btn" class="primary-btn secondary">Cancel</button>
+        <button type="button" id="goal-save-btn" class="primary-btn">Save</button>
+      </div>
+    </div>
+  </div>
 
   <!-- barcode scanner modal -->
   <div id="scanner-modal" class="scanner-modal" hidden role="dialog" aria-modal="true" aria-label="Barcode scanner">
