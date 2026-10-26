@@ -479,3 +479,158 @@ button { font-family: inherit; }
   margin: 18px 0;
   font-size: 14px;
 }
+
+/* ---------- date strip (nutrition day picker) ---------- */
+.date-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 14px;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.date-chip {
+  flex-shrink: 0;
+  width: 54px;
+  background: #1b1724;
+  border: 1px solid #262033;
+  border-radius: 14px;
+  padding: 10px 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  color: #a79bc4;
+}
+.date-chip .dow { font-size: 11px; font-weight: 600; text-transform: uppercase; opacity: 0.8; }
+.date-chip .dom { font-size: 17px; font-weight: 700; color: #e4e1ec; }
+.date-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: transparent; margin-top: 2px; }
+.date-chip.has-entries .dot { background: #7c5ce0; }
+.date-chip.selected {
+  background: linear-gradient(135deg, #7c5ce0, #5b3fc0);
+  border-color: #7c5ce0;
+}
+.date-chip.selected .dow, .date-chip.selected .dom { color: #f8f6fd; }
+.date-chip.selected .dot { background: #f8f6fd; }
+
+/* ---------- calorie progress bar ---------- */
+.cal-progress-wrap { margin-bottom: 14px; }
+.cal-progress-track {
+  background: #16131e;
+  border: 1px solid #262033;
+  border-radius: 999px;
+  height: 14px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.cal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c5ce0, #a98df0);
+  border-radius: 999px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.cal-progress-fill.over {
+  background: linear-gradient(90deg, #e07a9e, #f0a8c0);
+}
+.cal-progress-text {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1edf7;
+}
+.stats-row.three .stat { flex: 1; }
+
+/* ---------- calorie goal modal ---------- */
+.goal-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 15, 0.7);
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.goal-modal[hidden] { display: none; }
+.goal-modal-card {
+  background: #1b1724;
+  border: 1px solid #332a4d;
+  border-radius: 18px;
+  padding: 20px;
+  width: 100%;
+  max-width: 320px;
+}
+.goal-modal-card h2 { margin: 0 0 14px; font-size: 16px; color: #f1edf7; text-transform: none; letter-spacing: 0; }
+#goal-input {
+  width: 100%;
+  background: #16131e;
+  border: 1px solid #2d2640;
+  color: #e4e1ec;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 18px;
+  margin-bottom: 14px;
+}
+.goal-modal-actions { display: flex; gap: 10px; }
+.goal-modal-actions .primary-btn { flex: 1; margin: 0; }
+
+/* ============================================================
+   VISUAL POLISH PASS — depth, gradients, refined surfaces
+   ============================================================ */
+html, body { background: radial-gradient(ellipse at top, #1a1526 0%, #0e0c14 60%); }
+.card {
+  background: linear-gradient(160deg, #1d1928 0%, #181320 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 20px -12px rgba(0,0,0,0.6);
+}
+.hero-card {
+  background: linear-gradient(135deg, #2b2047 0%, #1d1730 60%, #181320 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 10px 28px -14px rgba(124,92,224,0.35);
+}
+.primary-btn {
+  background: linear-gradient(135deg, #8b6ef0, #6c48d6);
+  box-shadow: 0 6px 16px -6px rgba(124,92,224,0.55);
+}
+.primary-btn.secondary {
+  background: transparent;
+  box-shadow: none;
+}
+.chip.selected {
+  background: linear-gradient(135deg, #8b6ef0, #6c48d6);
+  box-shadow: 0 4px 10px -4px rgba(124,92,224,0.5);
+}
+.mode-btn.selected {
+  background: linear-gradient(135deg, #8b6ef0, #6c48d6);
+}
+.action-tile {
+  background: linear-gradient(160deg, #1d1928 0%, #181320 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 20px -12px rgba(0,0,0,0.6);
+}
+.action-tile:active {
+  background: linear-gradient(160deg, #241b3a, #1d1730);
+}
+.exercise-card, .food-card, .saved-item, .day-card {
+  background: linear-gradient(160deg, #1d1928 0%, #181320 100%);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset;
+}
+.exercise-card .num {
+  background: linear-gradient(135deg, #2a2240, #1b1724);
+}
+.stat {
+  background: linear-gradient(160deg, #1a1624, #141019);
+}
+.tabbar {
+  background: rgba(14, 12, 20, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.topbar {
+  background: transparent;
+}
+.workout-header {
+  background: rgba(14, 12, 20, 0.0);
+}
+.week-tab.active, .date-chip.selected {
+  box-shadow: 0 4px 10px -4px rgba(124,92,224,0.5);
+}
